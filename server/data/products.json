@@ -1,0 +1,202 @@
+[
+  {
+    "id": "stikkontakt_1p",
+    "navn": "Stikkontakt 1-polet, montage og tilslutning",
+    "enhed": "stk",
+    "pris_1": 895,
+    "pris_2plus": 795,
+    "kategori": "Stik/afbryder"
+  },
+  {
+    "id": "stikkontakt_2p",
+    "navn": "Stikkontakt 2-polet, montage og tilslutning",
+    "enhed": "stk",
+    "pris_1": 995,
+    "pris_2plus": 895,
+    "kategori": "Stik/afbryder"
+  },
+  {
+    "id": "afbryder_1p",
+    "navn": "Afbryder 1-polet, montage og tilslutning",
+    "enhed": "stk",
+    "pris_1": 795,
+    "pris_2plus": 695,
+    "kategori": "Stik/afbryder"
+  },
+  {
+    "id": "afbryder_2p",
+    "navn": "Afbryder 2-polet/korrespondance",
+    "enhed": "stk",
+    "pris_1": 995,
+    "pris_2plus": 895,
+    "kategori": "Stik/afbryder"
+  },
+  {
+    "id": "lyspunkt_loft",
+    "navn": "Lyspunkt i loft, montage og tilslutning",
+    "enhed": "stk",
+    "pris_1": 1295,
+    "pris_2plus": 1095,
+    "kategori": "Belysning"
+  },
+  {
+    "id": "lyspunkt_væg",
+    "navn": "Lyspunkt på væg, montage og tilslutning",
+    "enhed": "stk",
+    "pris_1": 1195,
+    "pris_2plus": 995,
+    "kategori": "Belysning"
+  },
+  {
+    "id": "spot_indbygning",
+    "navn": "LED spot indbygning inkl. driver",
+    "enhed": "stk",
+    "pris_1": 895,
+    "pris_2plus": 695,
+    "kategori": "Belysning"
+  },
+  {
+    "id": "lysskinne",
+    "navn": "Lysskinne montage og tilslutning",
+    "enhed": "stk",
+    "pris_1": 1495,
+    "pris_2plus": 1295,
+    "kategori": "Belysning"
+  },
+  {
+    "id": "dimmer",
+    "navn": "Dimmer installation og tilslutning",
+    "enhed": "stk",
+    "pris_1": 1295,
+    "pris_2plus": 1095,
+    "kategori": "Stik/afbryder"
+  },
+  {
+    "id": "kabel_3g1.5",
+    "navn": "Kabel 3G1.5mm², fremføring",
+    "enhed": "m",
+    "pris_1": 95,
+    "pris_2plus": 75,
+    "kategori": "Kabel"
+  },
+  {
+    "id": "kabel_3g2.5",
+    "navn": "Kabel 3G2.5mm², fremføring",
+    "enhed": "m",
+    "pris_1": 115,
+    "pris_2plus": 95,
+    "kategori": "Kabel"
+  },
+  {
+    "id": "kabel_5g2.5",
+    "navn": "Kabel 5G2.5mm², fremføring",
+    "enhed": "m",
+    "pris_1": 145,
+    "pris_2plus": 125,
+    "kategori": "Kabel"
+  },
+  {
+    "id": "gruppetavle_udskift",
+    "navn": "Gruppetavle udskiftning (standard)",
+    "enhed": "stk",
+    "pris_1": 6995,
+    "pris_2plus": 6495,
+    "kategori": "Tavle"
+  },
+  {
+    "id": "hpfi_relæ",
+    "navn": "HPFI-relæ montage",
+    "enhed": "stk",
+    "pris_1": 1995,
+    "pris_2plus": 1795,
+    "kategori": "Tavle"
+  },
+  {
+    "id": "automatsikring",
+    "navn": "Automatsikring montage",
+    "enhed": "stk",
+    "pris_1": 495,
+    "pris_2plus": 395,
+    "kategori": "Tavle"
+  },
+  {
+    "id": "fejlstrømsafbryder",
+    "navn": "Fejlstrømsafbryder 30mA",
+    "enhed": "stk",
+    "pris_1": 1295,
+    "pris_2plus": 1095,
+    "kategori": "Tavle"
+  },
+  {
+    "id": "emhætte_tilsl",
+    "navn": "Emhætte tilslutning",
+    "enhed": "stk",
+    "pris_1": 895,
+    "pris_2plus": 795,
+    "kategori": "Hårde hvidevarer"
+  },
+  {
+    "id": "komfur_tilsl",
+    "navn": "Komfur/ovn tilslutning",
+    "enhed": "stk",
+    "pris_1": 1295,
+    "pris_2plus": 1095,
+    "kategori": "Hårde hvidevarer"
+  },
+  {
+    "id": "vaskemaskine_tilsl",
+    "navn": "Vaskemaskine/tørretumbler tilslutning",
+    "enhed": "stk",
+    "pris_1": 795,
+    "pris_2plus": 695,
+    "kategori": "Hårde hvidevarer"
+  },
+  {
+    "id": "opvaskemaskine_tilsl",
+    "navn": "Opvaskemaskine tilslutning",
+    "enhed": "stk",
+    "pris_1": 795,
+    "pris_2plus": 695,
+    "kategori": "Hårde hvidevarer"
+  },
+  {
+    "id": "el_radiator",
+    "navn": "El-radiator montage og tilslutning",
+    "enhed": "stk",
+    "pris_1": 1495,
+    "pris_2plus": 1295,
+    "kategori": "Varme"
+  },
+  {
+    "id": "gulvvarme_termostat",
+    "navn": "Gulvvarme termostat installation",
+    "enhed": "stk",
+    "pris_1": 1695,
+    "pris_2plus": 1495,
+    "kategori": "Varme"
+  },
+  {
+    "id": "service_time",
+    "navn": "Elektriker timepris",
+    "enhed": "time",
+    "pris_1": 595,
+    "pris_2plus": 545,
+    "kategori": "Service"
+  },
+  {
+    "id": "udkald",
+    "navn": "Udkald/kørsel",
+    "enhed": "stk",
+    "pris_1": 395,
+    "pris_2plus": 395,
+    "kategori": "Service"
+  },
+  {
+    "id": "fejlfinding",
+    "navn": "Fejlfinding pr. påbegyndt time",
+    "enhed": "time",
+    "pris_1": 695,
+    "pris_2plus": 645,
+    "kategori": "Service"
+  }
+]
