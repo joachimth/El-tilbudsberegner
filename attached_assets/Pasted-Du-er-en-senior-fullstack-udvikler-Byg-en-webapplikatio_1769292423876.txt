@@ -1,0 +1,151 @@
+Du er en senior fullstack-udvikler. Byg en webapplikation: “Hurtig Tilbudsberegner for Elektrikere”.
+
+MÅL
+Appen skal gøre det ekstremt hurtigt at lave et professionelt tilbud baseret på foruddefinerede enhedsprodukter (varekatalog). Brugeren vælger produkter, angiver antal, grupperer pr. rum/lokation, og appen genererer et poleret tilbud (PDF + printvenlig HTML) ud fra en skabelon.
+
+TEKNOLOGI (vælg en enkel, stabil stack)
+- Frontend: Vanilla HTML/CSS/JS (ingen frameworks) eller minimalistisk React hvis du vurderer det er hurtigere på Replit.
+- Backend: Node.js + Express (foretrækkes) eller Python Flask.
+- Data: Lokal JSON-fil til katalog + projekter (ingen login, ingen databasekrav).
+- PDF: Generér PDF fra HTML (fx Playwright eller Puppeteer) ELLER brug en enkel server-side PDF generator. Vælg den løsning der er mest pålidelig på Replit.
+
+KERNESCOPE (MUST HAVE)
+1) VAREKATALOG (foruddefinerede enhedsprodukter)
+- Produkter ligger i en JSON-fil som kan redigeres af udvikler/administrator (ikke fra UI).
+- Produktfelter:
+  - id (string)
+  - navn (string)
+  - enhed (fx “stk”, “m”, “time”) – default “stk”
+  - pris_1 (pris pr stk når antal = 1)
+  - pris_2plus (pris pr stk når antal >= 2)
+  - kategori (fx “Tavle”, “Belysning”, “Stik/afbryder”, “Kabel”, “Service”)
+  - valgfri: beskrivelse, EAN, internVarenr
+- Prislogik:
+  - Hvis antal = 1: brug pris_1
+  - Hvis antal >= 2: brug pris_2plus for ALLE stk (også nr. 1). Dvs. samlet linjepris = antal * pris_2plus.
+
+2) TILBUDSOPBYGNING (rum/lokation)
+- Brugeren kan oprette et tilbud med:
+  - Kundeinfo (navn, adresse, email, telefon)
+  - Projektinfo (projektnavn, reference, dato)
+  - Valuta: DKK
+  - Momsvalg: “Vis priser ekskl. moms” (default) + mulighed for at vise total inkl. moms (25%) i bunden.
+- Tilbuddet består af “Lokationer” (fx “Køkken”, “Badeværelse”, “Kontor 1”, “Udendørs”, “Tavlerum”).
+- Hver lokation har linjer:
+  - produkt valgt fra katalog (dropdown + søg)
+  - antal (integer, min 1)
+  - linjepris beregnes automatisk
+- Brugeren kan:
+  - Tilføje/fjerne lokationer
+  - Tilføje/fjerne linjer i en lokation
+  - Omarrangere lokationer (op/ned)
+  - Kopiere en linje
+
+3) BEGRÆNSNINGER (vigtige)
+- Brugeren må IKKE kunne ændre:
+  - produktpriser
+  - rabatter/avancer/marginer
+  - beregningsregler
+- Brugeren må KUN vælge fra katalog og angive antal.
+- Ingen “fri tekst linjer” som kan misbruges til at ændre priser.
+- Tillad dog en fri tekst “Bemærkninger” sektion til selve tilbuddet (uden talfelter).
+
+4) OUTPUT: PÆNT OG POLERET TILBUD FRA SKABELON
+- Generér en poleret tilbudsvisning ud fra en HTML-skabelon:
+  - Logo-placeholder (kan være en lokal fil /static/logo.png)
+  - Firmaoplysninger i header/footer (hardcoded i config, ikke redigerbart i UI)
+  - Kunden + projektdata
+  - Tabel pr. lokation:
+    - Produktnavn
+    - Antal
+    - Enhedspris
+    - Linjetotal
+  - Subtotal pr. lokation
+  - Total samlet
+  - Moms (25%) + total inkl. moms (hvis slået til)
+  - Standard forbehold/tekst (fra config)
+- Brugeren skal kunne:
+  - Forhåndsvise tilbuddet i browser (printvenligt)
+  - Downloade som PDF
+  - Udskrive
+
+5) GEM/INDLÆS (simpelt)
+- Brugeren skal kunne gemme et tilbud som JSON (download) og indlæse det igen (upload).
+- Alternativt kan tilbud gemmes lokalt på server i en /data-mappe som JSON-filer (uden login) – vælg den nemmeste sikre løsning.
+
+UI-KRAV (hurtigt workflow)
+- Forside: “Nyt tilbud” + “Indlæs tilbud”
+- Tilbudseditor:
+  - Venstre: Kunde/Projektinfo + moms-toggle + bemærkninger
+  - Midte: Lokationer med linjer
+  - Højre: Live-resumé (subtotal pr. lokation + total)
+- Produktvælger:
+  - Søgbar dropdown
+  - Vis kategori
+  - Vis enhedspriser (1 stk vs 2+)
+- Alt skal være hurtigt med tastatur:
+  - Enter = tilføj ny linje
+  - Tab navigerer felter logisk
+
+DATAMODEL (JSON eksempel)
+- products.json:
+[
+  {
+    "id": "stikkontakt_1p",
+    "navn": "Stikkontakt 1-polet, montage og tilslutning",
+    "enhed": "stk",
+    "pris_1": 895,
+    "pris_2plus": 795,
+    "kategori": "Stik/afbryder"
+  }
+]
+- offer.json:
+{
+  "meta": { "projektnavn": "", "dato": "YYYY-MM-DD", "reference": "" },
+  "kunde": { "navn": "", "adresse": "", "email": "", "telefon": "" },
+  "moms": { "visInkl": true },
+  "bemærkninger": "",
+  "lokationer": [
+    {
+      "navn": "Køkken",
+      "linjer": [
+        { "productId": "stikkontakt_1p", "antal": 3 }
+      ]
+    }
+  ]
+}
+
+BEREGNING
+- Enhedspris = pris_1 hvis antal==1 ellers pris_2plus
+- Linjetotal = antal * enhedspris
+- Lokation subtotal = sum(linjetotal)
+- Total = sum(lokation subtotal)
+- Moms = total * 0.25
+- Total inkl moms = total + moms
+- Formatering: DKK med tusindtalsseparator og 2 decimaler.
+
+SÆRLIGE KRAV
+- Ingen autentificering, men koden skal være struktureret og nem at udvide.
+- Læg al konfiguration i en config-fil (firmanavn, adresse, CVR, standardtekst, momsprocent).
+- Sørg for robust validering (antal skal være heltal >= 1).
+- Sørg for at UI ikke kan ændre priser: prisen kommer altid fra products.json via productId.
+- Tilføj et lille demo-katalog med 15-25 typiske el-ydelser.
+
+LEVERANCE
+- Opret hele projektet med en klar filstruktur:
+  - /server (API)
+  - /public (frontend)
+  - /templates (tilbudsskabelon)
+  - /data (produktsæt, gemte tilbud hvis relevant)
+- Lav en README.md med:
+  - Sådan køres projektet
+  - Hvordan man redigerer products.json
+  - Hvordan PDF genereres
+  - Begrænsninger og næste mulige forbedringer
+
+EKSTRA (NICE TO HAVE, hvis det er hurtigt)
+- “Favoritprodukter” sektion (stadig fra katalog)
+- Eksportér tilbud som både PDF og en printvenlig HTML-fil
+- Versionsstempel på tilbud (fx “Tilbud #2026-0001” genereret lokalt)
+
+Start med at generere hele koden, ikke kun en plan.
