@@ -1,6 +1,5 @@
-import { Trash2, Copy } from "lucide-react";
+import { Trash2, Copy, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ProductSelector } from "./product-selector";
 import type { Product } from "@/lib/types";
 import { formatDKK, beregnEnhedspris, beregnLinjepris } from "@shared/schema";
@@ -24,89 +23,99 @@ export function LinjeEditor({
   onAntalChange,
   onDelete,
   onCopy,
-  onEnterPress,
 }: LinjeEditorProps) {
   const product = products.find(p => p.id === productId);
   const enhedspris = product ? beregnEnhedspris(product, antal) : 0;
   const linjepris = product ? beregnLinjepris(product, antal) : 0;
 
-  const handleAntalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value >= 1) {
-      onAntalChange(value);
-    } else if (e.target.value === "") {
-      onAntalChange(1);
+  const handleDecrement = () => {
+    if (antal > 1) {
+      onAntalChange(antal - 1);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && onEnterPress) {
-      e.preventDefault();
-      onEnterPress();
-    }
+  const handleIncrement = () => {
+    onAntalChange(antal + 1);
   };
 
   return (
-    <div className="flex items-start gap-3 p-3 bg-card rounded-md border border-card-border group">
-      <div className="flex-1 min-w-0">
-        <ProductSelector
-          products={products}
-          value={productId}
-          onSelect={onProductChange}
-        />
-      </div>
-      
-      <div className="w-20 shrink-0">
-        <Input
-          type="number"
-          min={1}
-          value={antal}
-          onChange={handleAntalChange}
-          onKeyDown={handleKeyDown}
-          className="text-center"
-          data-testid="input-antal"
-        />
-        {product && (
-          <span className="text-xs text-muted-foreground block text-center mt-1">
-            {product.enhed}
-          </span>
-        )}
-      </div>
-      
-      <div className="w-24 shrink-0 text-right">
-        <div className="text-sm font-medium" data-testid="text-enhedspris">
-          {formatDKK(enhedspris)}
+    <div className="p-4 bg-muted/50 rounded-xl space-y-3">
+      {/* Product selector - full width */}
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <ProductSelector
+            products={products}
+            value={productId}
+            onSelect={onProductChange}
+          />
         </div>
-        <span className="text-xs text-muted-foreground">pr. enhed</span>
-      </div>
-      
-      <div className="w-28 shrink-0 text-right">
-        <div className="font-semibold" data-testid="text-linjepris">
-          {formatDKK(linjepris)}
+        
+        {/* Action buttons - always visible on mobile */}
+        <div className="flex gap-1 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onCopy}
+            title="Kopiér linje"
+            data-testid="button-copy-linje"
+          >
+            <Copy className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onDelete}
+            className="text-destructive hover:text-destructive"
+            title="Slet linje"
+            data-testid="button-delete-linje"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
-        <span className="text-xs text-muted-foreground">i alt</span>
       </div>
       
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onCopy}
-          title="Kopiér linje"
-          data-testid="button-copy-linje"
-        >
-          <Copy className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onDelete}
-          className="text-destructive hover:text-destructive"
-          title="Slet linje"
-          data-testid="button-delete-linje"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
+      {/* Quantity and price row */}
+      <div className="flex items-center gap-4">
+        {/* Quantity stepper - Apple style */}
+        <div className="flex items-center gap-1 bg-background rounded-lg border p-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDecrement}
+            disabled={antal <= 1}
+            data-testid="button-decrement"
+          >
+            <Minus className="w-4 h-4" />
+          </Button>
+          <div className="w-12 text-center">
+            <span className="text-lg font-semibold" data-testid="text-antal">{antal}</span>
+            {product && (
+              <span className="text-xs text-muted-foreground block">{product.enhed}</span>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleIncrement}
+            data-testid="button-increment"
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+        
+        {/* Price info */}
+        <div className="flex-1 flex items-center justify-end gap-4">
+          <div className="text-right">
+            <div className="text-sm text-muted-foreground" data-testid="text-enhedspris">
+              {formatDKK(enhedspris)}/{product?.enhed || "stk"}
+            </div>
+          </div>
+          <div className="text-right min-w-[80px]">
+            <div className="text-lg font-semibold" data-testid="text-linjepris">
+              {formatDKK(linjepris)}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

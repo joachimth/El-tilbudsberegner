@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Calculator, MapPin } from "lucide-react";
+import { Calculator, MapPin, TrendingUp } from "lucide-react";
 import type { OfferWithTotals } from "@/lib/types";
 import { formatDKK } from "@shared/schema";
 
@@ -13,16 +13,19 @@ export function SummaryPanel({ offerWithTotals, showMoms }: SummaryPanelProps) {
   if (!offerWithTotals) {
     return (
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Calculator className="w-4 h-4" />
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Calculator className="w-5 h-5" />
             Resumé
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Tilføj lokationer og produkter for at se resumé
-          </p>
+          <div className="text-center py-8">
+            <TrendingUp className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">
+              Tilføj lokationer og produkter for at se resumé
+            </p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -32,30 +35,40 @@ export function SummaryPanel({ offerWithTotals, showMoms }: SummaryPanelProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Calculator className="w-4 h-4" />
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <Calculator className="w-5 h-5" />
           Resumé
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {lokationerWithTotals.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Ingen lokationer tilføjet
-          </p>
+          <div className="text-center py-8">
+            <MapPin className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">
+              Ingen lokationer tilføjet
+            </p>
+          </div>
         ) : (
           <>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {lokationerWithTotals.map((lok, index) => (
-                <div key={index} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="truncate">{lok.navn || "Unavngivet"}</span>
-                    <span className="text-muted-foreground shrink-0">
-                      ({lok.linjer.length})
-                    </span>
+                <div 
+                  key={index} 
+                  className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <MapPin className="w-4 h-4 text-primary shrink-0" />
+                    <div className="min-w-0">
+                      <span className="font-medium block truncate">
+                        {lok.navn || "Unavngivet"}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {lok.linjer.length} {lok.linjer.length === 1 ? "produkt" : "produkter"}
+                      </span>
+                    </div>
                   </div>
-                  <span className="font-medium shrink-0 ml-2" data-testid={`text-summary-lokation-${index}`}>
+                  <span className="font-semibold shrink-0 ml-3" data-testid={`text-summary-lokation-${index}`}>
                     {formatDKK(lok.subtotal)}
                   </span>
                 </div>
@@ -64,26 +77,26 @@ export function SummaryPanel({ offerWithTotals, showMoms }: SummaryPanelProps) {
             
             <Separator />
             
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">Subtotal (ekskl. moms)</span>
-                <span className="font-semibold" data-testid="text-summary-subtotal">
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Subtotal (ekskl. moms)</span>
+                <span className="font-semibold text-lg" data-testid="text-summary-subtotal">
                   {formatDKK(total)}
                 </span>
               </div>
               
               {showMoms && (
                 <>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between text-muted-foreground">
                     <span>Moms (25%)</span>
                     <span data-testid="text-summary-moms">{formatDKK(moms)}</span>
                   </div>
                   
                   <Separator />
                   
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">Total inkl. moms</span>
-                    <span className="font-bold text-lg text-primary" data-testid="text-summary-total-inkl">
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="font-semibold text-lg">Total inkl. moms</span>
+                    <span className="font-bold text-2xl text-primary" data-testid="text-summary-total-inkl">
                       {formatDKK(totalInklMoms)}
                     </span>
                   </div>
@@ -91,8 +104,8 @@ export function SummaryPanel({ offerWithTotals, showMoms }: SummaryPanelProps) {
               )}
               
               {!showMoms && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Slå &quot;Vis total inkl. moms&quot; til for at se momsen.
+                <p className="text-sm text-muted-foreground">
+                  Slå &quot;Vis total inkl. moms&quot; til under Kunde for at se momsen.
                 </p>
               )}
             </div>

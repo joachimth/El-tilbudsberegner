@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -56,31 +56,32 @@ export function ProductSelector({ products, value, onSelect, disabled }: Product
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className="w-full justify-between text-left font-normal h-auto min-h-9 py-2"
+          className="w-full justify-between text-left font-normal h-auto min-h-12 py-2 px-3"
           data-testid="button-product-selector"
         >
           {selectedProduct ? (
             <div className="flex flex-col items-start gap-0.5 overflow-hidden">
-              <span className="truncate">{selectedProduct.navn}</span>
+              <span className="truncate font-medium">{selectedProduct.navn}</span>
               <span className="text-xs text-muted-foreground">
-                {formatDKK(selectedProduct.pris_1)} (1 {selectedProduct.enhed}) / {formatDKK(selectedProduct.pris_2plus)} (2+ {selectedProduct.enhed})
+                {formatDKK(selectedProduct.pris_1)} (1 stk) / {formatDKK(selectedProduct.pris_2plus)} (2+ stk)
               </span>
             </div>
           ) : (
             <span className="text-muted-foreground">Vælg produkt...</span>
           )}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent className="w-[min(400px,calc(100vw-32px))] p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Søg efter produkt..."
             value={search}
             onValueChange={setSearch}
+            className="h-12"
             data-testid="input-product-search"
           />
-          <CommandList className="max-h-[300px]">
+          <CommandList className="max-h-[50vh]">
             <CommandEmpty>Ingen produkter fundet.</CommandEmpty>
             {filteredGroups.map(([kategori, prods]) => (
               <CommandGroup key={kategori} heading={kategori}>
@@ -93,19 +94,19 @@ export function ProductSelector({ products, value, onSelect, disabled }: Product
                       setOpen(false);
                       setSearch("");
                     }}
-                    className="flex items-start gap-2 py-2"
+                    className="flex items-start gap-3 py-3 px-3 min-h-[56px]"
                     data-testid={`product-option-${product.id}`}
                   >
                     <Check
                       className={cn(
-                        "h-4 w-4 mt-0.5 shrink-0",
+                        "h-5 w-5 mt-0.5 shrink-0",
                         value === product.id ? "opacity-100" : "opacity-0"
                       )}
                     />
                     <div className="flex flex-col gap-0.5 min-w-0">
                       <span className="font-medium">{product.navn}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDKK(product.pris_1)}/{product.enhed} (1 stk) · {formatDKK(product.pris_2plus)}/{product.enhed} (2+)
+                      <span className="text-sm text-muted-foreground">
+                        {formatDKK(product.pris_1)} / {formatDKK(product.pris_2plus)} (2+)
                       </span>
                     </div>
                   </CommandItem>

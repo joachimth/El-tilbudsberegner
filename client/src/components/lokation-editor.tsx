@@ -1,9 +1,15 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Plus, Trash2, GripVertical, MapPin } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Trash2, MapPin, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { LinjeEditor } from "./linje-editor";
 import type { Lokation, Product } from "@/lib/types";
 import { formatDKK, beregnLinjepris } from "@shared/schema";
@@ -73,89 +79,100 @@ export function LokationEditor({
   };
 
   return (
-    <Card className="mb-4">
+    <Card className="mb-4 overflow-hidden">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CardHeader className="p-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onMoveUp}
-                disabled={lokationIndex === 0}
-                className="h-8 w-8"
-                title="Flyt op"
-                data-testid="button-move-up"
-              >
-                <ChevronUp className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onMoveDown}
-                disabled={lokationIndex === totalLokationer - 1}
-                className="h-8 w-8"
-                title="Flyt ned"
-                data-testid="button-move-down"
-              >
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <MapPin className="w-4 h-4 text-muted-foreground" />
-            
-            {isEditingName ? (
-              <Input
-                value={lokation.navn}
-                onChange={e => handleNameChange(e.target.value)}
-                onBlur={() => setIsEditingName(false)}
-                onKeyDown={e => e.key === "Enter" && setIsEditingName(false)}
-                className="w-48 h-8"
-                autoFocus
-                data-testid="input-lokation-navn"
-              />
-            ) : (
-              <CardTitle
-                className="text-base cursor-pointer hover:text-primary transition-colors"
-                onClick={() => setIsEditingName(true)}
-                data-testid="text-lokation-navn"
-              >
-                {lokation.navn || "Unavngivet lokation"}
-              </CardTitle>
-            )}
-            
-            <span className="text-sm text-muted-foreground">
-              ({lokation.linjer.length} {lokation.linjer.length === 1 ? "linje" : "linjer"})
-            </span>
-            
-            <div className="flex-1" />
-            
-            <span className="font-semibold text-sm" data-testid="text-lokation-subtotal">
-              {formatDKK(subtotal)}
-            </span>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onDelete}
-              className="text-destructive hover:text-destructive h-8 w-8"
-              title="Slet lokation"
-              data-testid="button-delete-lokation"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-            
+        <CardHeader className="p-4 pb-3">
+          <div className="flex items-center gap-3">
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-toggle-lokation">
-                {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="shrink-0" 
+                data-testid="button-toggle-lokation"
+              >
+                {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
               </Button>
             </CollapsibleTrigger>
+            
+            <MapPin className="w-5 h-5 text-primary shrink-0" />
+            
+            <div className="flex-1 min-w-0">
+              {isEditingName ? (
+                <Input
+                  value={lokation.navn}
+                  onChange={e => handleNameChange(e.target.value)}
+                  onBlur={() => setIsEditingName(false)}
+                  onKeyDown={e => e.key === "Enter" && setIsEditingName(false)}
+                  className="h-10 text-base font-medium"
+                  autoFocus
+                  data-testid="input-lokation-navn"
+                />
+              ) : (
+                <button
+                  className="text-left w-full"
+                  onClick={() => setIsEditingName(true)}
+                  data-testid="text-lokation-navn"
+                >
+                  <span className="font-semibold text-base block truncate">
+                    {lokation.navn || "Unavngivet lokation"}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {lokation.linjer.length} {lokation.linjer.length === 1 ? "produkt" : "produkter"}
+                  </span>
+                </button>
+              )}
+            </div>
+            
+            <div className="text-right shrink-0">
+              <span className="font-bold text-lg" data-testid="text-lokation-subtotal">
+                {formatDKK(subtotal)}
+              </span>
+            </div>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="shrink-0"
+                  data-testid="button-lokation-menu"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem 
+                  onClick={onMoveUp}
+                  disabled={lokationIndex === 0}
+                  data-testid="menu-move-up"
+                >
+                  <ChevronUp className="w-4 h-4 mr-2" />
+                  Flyt op
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={onMoveDown}
+                  disabled={lokationIndex === totalLokationer - 1}
+                  data-testid="menu-move-down"
+                >
+                  <ChevronDown className="w-4 h-4 mr-2" />
+                  Flyt ned
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={onDelete}
+                  className="text-destructive focus:text-destructive"
+                  data-testid="menu-delete-lokation"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Slet lokation
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardHeader>
         
         <CollapsibleContent>
           <CardContent className="pt-0 px-4 pb-4">
-            <div className="space-y-2">
+            <div className="space-y-3">
               {lokation.linjer.map((linje, index) => (
                 <LinjeEditor
                   key={index}
@@ -166,26 +183,24 @@ export function LokationEditor({
                   onAntalChange={antal => handleLinjeChange(index, { antal })}
                   onDelete={() => handleDeleteLinje(index)}
                   onCopy={() => handleCopyLinje(index)}
-                  onEnterPress={handleAddLinje}
                 />
               ))}
               
               {lokation.linjer.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  Ingen linjer endnu. Tilføj den første linje nedenfor.
+                  <p className="mb-4">Ingen produkter endnu</p>
                 </div>
               )}
             </div>
             
             <Button
               variant="outline"
-              size="sm"
               onClick={handleAddLinje}
-              className="mt-4 w-full"
+              className="mt-4 w-full h-12 text-base"
               data-testid="button-add-linje"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Tilføj linje
+              <Plus className="w-5 h-5 mr-2" />
+              Tilføj produkt
             </Button>
           </CardContent>
         </CollapsibleContent>
