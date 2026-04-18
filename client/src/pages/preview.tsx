@@ -38,16 +38,16 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
 
   const handleDownloadHtml = async () => {
     if (!offer) return;
-    
+
     try {
       const response = await fetch("/api/html-export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(offer),
       });
-      
+
       if (!response.ok) throw new Error("Kunne ikke generere HTML");
-      
+
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -98,35 +98,41 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
 
   return (
     <div className="min-h-screen bg-muted">
+      {/* Navigationsbar – kompakt på mobil */}
       <header className="border-b bg-card sticky top-0 z-50 no-print">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={handleBack} data-testid="button-preview-back">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Tilbage til editor
+            <ArrowLeft className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Tilbage til editor</span>
+            <span className="sm:hidden">Tilbage</span>
           </Button>
-          
+
           <div className="flex-1" />
-          
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-1.5">
             <Button variant="outline" size="sm" onClick={handleDownloadHtml} data-testid="button-download-html">
-              <FileText className="w-4 h-4 mr-2" />
-              Download HTML
+              <FileText className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Download HTML</span>
             </Button>
             <Button size="sm" onClick={handlePrint} data-testid="button-print-preview">
-              <Printer className="w-4 h-4 mr-2" />
-              Print / PDF
+              <Printer className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Print / PDF</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-8">
+      <main className="max-w-4xl mx-auto p-3 sm:p-8">
         <div className="bg-white shadow-lg rounded-lg overflow-hidden print:shadow-none print:rounded-none">
-          <div className="p-8 print:p-12">
-            <header className="flex justify-between items-start mb-8 pb-6 border-b">
+          <div className="p-4 sm:p-8 print:p-12">
+
+            {/* Dokumenthoved: firmainfo venstre, tilbudsnr højre */}
+            <header className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start mb-6 sm:mb-8 pb-6 border-b">
               <div>
-                <div className="w-48 h-16 bg-primary/10 rounded flex items-center justify-center mb-4">
-                  <span className="text-primary font-bold text-lg">{config?.firmanavn || "Logo"}</span>
+                <div className="w-36 sm:w-48 h-12 sm:h-16 bg-primary/10 rounded flex items-center justify-center mb-3">
+                  <span className="text-primary font-bold text-base sm:text-lg">
+                    {config?.firmanavn || "Logo"}
+                  </span>
                 </div>
                 <div className="text-sm text-gray-600">
                   <p>{config?.adresse}</p>
@@ -136,8 +142,8 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
                   <p>CVR: {config?.cvr}</p>
                 </div>
               </div>
-              
-              <div className="text-right">
+
+              <div className="sm:text-right">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">TILBUD</h1>
                 {offer.meta.tilbudNr && (
                   <p className="text-lg font-medium text-primary" data-testid="text-preview-tilbudnr">
@@ -155,8 +161,9 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
               </div>
             </header>
 
+            {/* Kunde og projekt */}
             <section className="mb-8">
-              <div className="grid grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
                 <div>
                   <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
                     Kunde
@@ -168,7 +175,7 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
                     <p>{offer.kunde.email}</p>
                   </div>
                 </div>
-                
+
                 <div>
                   <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
                     Projekt
@@ -180,64 +187,69 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
               </div>
             </section>
 
+            {/* Lokationer med produkttabeller */}
             {offerWithTotals?.lokationerWithTotals.map((lok, lokIndex) => (
               <section key={lokIndex} className="mb-6">
                 <h3 className="font-semibold text-gray-900 mb-3 pb-2 border-b flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full" />
+                  <span className="w-2 h-2 bg-primary rounded-full shrink-0" />
                   {lok.navn}
                 </h3>
-                
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-500 border-b">
-                      <th className="py-2 font-medium">Produkt</th>
-                      <th className="py-2 font-medium text-center w-20">Antal</th>
-                      <th className="py-2 font-medium text-right w-28">Enhedspris</th>
-                      <th className="py-2 font-medium text-right w-28">Linjepris</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lok.linjerWithProducts.map((linje, linjeIndex) => (
-                      <tr key={linjeIndex} className="border-b border-gray-100">
-                        <td className="py-2">
-                          <span className="font-medium">{linje.product.navn}</span>
+
+                {/* Tabel: horisontal scroll på smal mobil */}
+                <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                  <table className="w-full text-sm min-w-[360px]">
+                    <thead>
+                      <tr className="text-left text-gray-500 border-b">
+                        <th className="py-2 font-medium">Produkt</th>
+                        <th className="py-2 font-medium text-center w-16 sm:w-20">Antal</th>
+                        <th className="py-2 font-medium text-right w-24 sm:w-28">Enhedspris</th>
+                        <th className="py-2 font-medium text-right w-24 sm:w-28">Linjepris</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lok.linjerWithProducts.map((linje, linjeIndex) => (
+                        <tr key={linjeIndex} className="border-b border-gray-100">
+                          <td className="py-2">
+                            <span className="font-medium">{linje.product.navn}</span>
+                          </td>
+                          <td className="py-2 text-center">
+                            {linje.antal} {linje.product.enhed}
+                          </td>
+                          <td className="py-2 text-right text-gray-600">
+                            {formatDKK(linje.enhedspris)}
+                          </td>
+                          <td className="py-2 text-right font-medium">
+                            {formatDKK(linje.linjepris)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={3} className="py-2 text-right font-medium text-gray-600">
+                          Subtotal {lok.navn}:
                         </td>
-                        <td className="py-2 text-center">
-                          {linje.antal} {linje.product.enhed}
-                        </td>
-                        <td className="py-2 text-right text-gray-600">
-                          {formatDKK(linje.enhedspris)}
-                        </td>
-                        <td className="py-2 text-right font-medium">
-                          {formatDKK(linje.linjepris)}
+                        <td className="py-2 text-right font-semibold">
+                          {formatDKK(lok.subtotal)}
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan={3} className="py-2 text-right font-medium text-gray-600">
-                        Subtotal {lok.navn}:
-                      </td>
-                      <td className="py-2 text-right font-semibold">
-                        {formatDKK(lok.subtotal)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+                    </tfoot>
+                  </table>
+                </div>
               </section>
             ))}
 
+            {/* Totaler – fuld bredde på mobil, 256px på desktop */}
             <section className="mt-8 pt-6 border-t-2 border-gray-900">
               <div className="flex justify-end">
-                <div className="w-64 space-y-2">
+                <div className="w-full sm:w-64 space-y-2">
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal (ekskl. moms):</span>
                     <span className="font-medium" data-testid="text-preview-subtotal">
                       {formatDKK(offerWithTotals?.total || 0)}
                     </span>
                   </div>
-                  
+
                   {offer.moms.visInkl && (
                     <>
                       <div className="flex justify-between text-gray-600">
@@ -246,7 +258,7 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
                           {formatDKK(offerWithTotals?.moms || 0)}
                         </span>
                       </div>
-                      
+
                       <div className="flex justify-between text-lg font-bold pt-2 border-t">
                         <span>Total inkl. moms:</span>
                         <span className="text-primary" data-testid="text-preview-total">
@@ -255,7 +267,7 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
                       </div>
                     </>
                   )}
-                  
+
                   {!offer.moms.visInkl && (
                     <div className="flex justify-between text-lg font-bold pt-2 border-t">
                       <span>Total ekskl. moms:</span>
@@ -281,6 +293,7 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
               <p className="mb-4">{config?.standardtekst}</p>
               <p>{config?.betalingsbetingelser}</p>
             </footer>
+
           </div>
         </div>
       </main>

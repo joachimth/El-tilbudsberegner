@@ -63,7 +63,7 @@ export function KundeInfoForm({
               data-testid={tid("input-projektnavn")}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label htmlFor={tid("dato")} className="text-sm font-medium">Dato</Label>
               <Input
