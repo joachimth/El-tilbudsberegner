@@ -1,98 +1,224 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join } from "path";
+import { db, brugere, produkter, tilbud, indstillinger } from "./db";
+import { eq } from "drizzle-orm";
+import { hashPassword } from "./auth";
 import type { Product, Config, Offer } from "@shared/schema";
 
-const DATA_DIR = join(process.cwd(), "server", "data");
-const PRODUCTS_FILE = join(DATA_DIR, "products.json");
-const CONFIG_FILE = join(DATA_DIR, "config.json");
-const OFFERS_DIR = join(DATA_DIR, "offers");
+export class DbStorage {
+  // ── Produkter ──────────────────────────────────────────────────────────
 
-function ensureDirectoryExists(dir: string) {
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+  async getProducts(): Promise<Product[]> {
+    const rows = await db
+      .select()
+      .from(produkter)
+      .where(eq(produkter.aktiv, true))
+      .orderBy(produkter.sortering);
+    return rows.map(dbRowToProduct);
+  }
+
+  async getAllProducts() {
+    const rows = await db.select().from(produkter).orderBy(produkter.sortering);
+    return rows.map(r => ({
+      ...dbRowToProduct(r),
+      kostpris: r.kostpris ?? undefined,
+      avanceProcent: r.avanceProcent ?? undefined,
+      arbejdstidMinutter: r.arbejdstidMinutter ?? undefined,
+      aktiv: r.aktiv,
+      sortering: r.sortering ?? 0,
+    }));
+  }
+
+  async createProduct(p: AdminProductInput): Promise<void> {
+    await db.insert(produkter).values({
+      id: p.id,
+      navn: p.navn,
+      enhed: p.enhed,
+      pris1: p.pris_1,
+      pris2plus: p.pris_2plus,
+      kategori: p.kategori,
+      kostpris: p.kostpris ?? null,
+      avanceProcent: p.avanceProcent ?? null,
+      arbejdstidMinutter: p.arbejdstidMinutter ?? null,
+      beskrivelse: p.beskrivelse ?? null,
+      aktiv: p.aktiv !== false,
+      sortering: p.sortering ?? 0,
+    });
+  }
+
+  async updateProduct(id: string, p: Partial<AdminProductInput>): Promise<void> {
+    await db.update(produkter).set({
+      navn: p.navn,
+      enhed: p.enhed,
+      pris1: p.pris_1,
+      pris2plus: p.pris_2plus,
+      kategori: p.kategori,
+      kostpris: p.kostpris !== undefined ? (p.kostpris ?? null) : undefined,
+      avanceProcent: p.avanceProcent !== undefined ? (p.avanceProcent ?? null) : undefined,
+      arbejdstidMinutter: p.arbejdstidMinutter !== undefined ? (p.arbejdstidMinutter ?? null) : undefined,
+      beskrivelse: p.beskrivelse !== undefined ? (p.beskrivelse ?? null) : undefined,
+      aktiv: p.aktiv !== undefined ? p.aktiv : undefined,
+    }).where(eq(produkter.id, id));
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    await db.delete(produkter).where(eq(produkter.id, id));
+  }
+
+  // ── Config / Indstillinger ─────────────────────────────────────────────
+
+  async getConfig(): Promise<Config> {
+    const rows = await db.select().from(indstillinger);
+    const m = Object.fromEntries(rows.map(r => [r.nøgle, r.værdi]));
+    return {
+      firmanavn: m.firmanavn || "",
+      adresse: m.adresse || "",
+      postnrBy: m.postnrBy || "",
+      telefon: m.telefon || "",
+      email: m.email || "",
+      cvr: m.cvr || "",
+      momsprocent: parseInt(m.momsprocent || "25"),
+      standardtekst: m.standardtekst || "",
+      betalingsbetingelser: m.betalingsbetingelser || "",
+    };
+  }
+
+  async getSettings(): Promise<Record<string, string>> {
+    const rows = await db.select().from(indstillinger);
+    return Object.fromEntries(rows.map(r => [r.nøgle, r.værdi]));
+  }
+
+  async updateSetting(key: string, value: string): Promise<void> {
+    await db
+      .insert(indstillinger)
+      .values({ nøgle: key, værdi: value })
+      .onConflictDoUpdate({ target: indstillinger.nøgle, set: { værdi: value } });
+  }
+
+  async updateSettings(settings: Record<string, string>): Promise<void> {
+    for (const [key, value] of Object.entries(settings)) {
+      await this.updateSetting(key, value);
+    }
+  }
+
+  // ── Tilbud ─────────────────────────────────────────────────────────────
+
+  async saveOffer(offer: Offer, userId?: number): Promise<string> {
+    const titel = offer.meta.projektnavn || "Nyt tilbud";
+    const offerNr = offer.meta.tilbudNr || null;
+
+    if (offer.id) {
+      const numId = parseInt(offer.id);
+      if (!isNaN(numId)) {
+        const [existing] = await db.select({ id: tilbud.id }).from(tilbud).where(eq(tilbud.id, numId));
+        if (existing) {
+          await db.update(tilbud).set({
+            titel,
+            tilbudNr: offerNr,
+            data: offer as any,
+            opdateretAt: new Date(),
+          }).where(eq(tilbud.id, numId));
+          return offer.id;
+        }
+      }
+    }
+
+    const [row] = await db.insert(tilbud).values({
+      titel,
+      tilbudNr: offerNr,
+      data: offer as any,
+      brugerId: userId ?? null,
+    }).returning({ id: tilbud.id });
+    return String(row.id);
+  }
+
+  async getOffer(id: string): Promise<Offer | null> {
+    const numId = parseInt(id);
+    if (isNaN(numId)) return null;
+    const [row] = await db.select().from(tilbud).where(eq(tilbud.id, numId));
+    if (!row) return null;
+    return { ...(row.data as any), id: String(row.id) };
+  }
+
+  async getOffersList(userId?: number, isAdmin = false) {
+    const rows = isAdmin
+      ? await db.select({
+          id: tilbud.id,
+          titel: tilbud.titel,
+          tilbudNr: tilbud.tilbudNr,
+          oprettetAt: tilbud.oprettetAt,
+          opdateretAt: tilbud.opdateretAt,
+          brugerId: tilbud.brugerId,
+        }).from(tilbud).orderBy(tilbud.opdateretAt)
+      : await db.select({
+          id: tilbud.id,
+          titel: tilbud.titel,
+          tilbudNr: tilbud.tilbudNr,
+          oprettetAt: tilbud.oprettetAt,
+          opdateretAt: tilbud.opdateretAt,
+          brugerId: tilbud.brugerId,
+        }).from(tilbud).where(eq(tilbud.brugerId, userId!)).orderBy(tilbud.opdateretAt);
+    return rows.map(r => ({ ...r, id: String(r.id) }));
+  }
+
+  async deleteOffer(id: string): Promise<void> {
+    const numId = parseInt(id);
+    if (!isNaN(numId)) {
+      await db.delete(tilbud).where(eq(tilbud.id, numId));
+    }
+  }
+
+  // ── Brugere ────────────────────────────────────────────────────────────
+
+  async getUsers() {
+    return db.select({
+      id: brugere.id,
+      brugernavn: brugere.brugernavn,
+      rolle: brugere.rolle,
+      oprettetAt: brugere.oprettetAt,
+    }).from(brugere).orderBy(brugere.id);
+  }
+
+  async createUser(brugernavn: string, password: string, rolle: "montør" | "admin") {
+    const passwordHash = await hashPassword(password);
+    const [user] = await db.insert(brugere).values({ brugernavn, passwordHash, rolle })
+      .returning({ id: brugere.id, brugernavn: brugere.brugernavn, rolle: brugere.rolle });
+    return user;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(brugere).where(eq(brugere.id, id));
   }
 }
 
-export interface IStorage {
-  getProducts(): Product[];
-  getConfig(): Config;
-  saveOffer(offer: Offer): string;
-  getOffer(id: string): Offer | null;
-  getOffers(): Offer[];
+export const storage = new DbStorage();
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+
+export interface AdminProductInput {
+  id: string;
+  navn: string;
+  enhed: string;
+  pris_1: number;
+  pris_2plus: number;
+  kategori: string;
+  kostpris?: number | null;
+  avanceProcent?: number | null;
+  arbejdstidMinutter?: number | null;
+  beskrivelse?: string | null;
+  aktiv?: boolean;
+  sortering?: number;
 }
 
-export class FileStorage implements IStorage {
-  constructor() {
-    ensureDirectoryExists(DATA_DIR);
-    ensureDirectoryExists(OFFERS_DIR);
-  }
-
-  getProducts(): Product[] {
-    try {
-      const content = readFileSync(PRODUCTS_FILE, "utf-8");
-      return JSON.parse(content) as Product[];
-    } catch (error) {
-      console.error("Error reading products:", error);
-      return [];
-    }
-  }
-
-  getConfig(): Config {
-    try {
-      const content = readFileSync(CONFIG_FILE, "utf-8");
-      return JSON.parse(content) as Config;
-    } catch (error) {
-      console.error("Error reading config:", error);
-      return {
-        firmanavn: "ElPro Installation ApS",
-        adresse: "Elektrikervej 42",
-        postnrBy: "2650 Hvidovre",
-        telefon: "+45 70 20 30 40",
-        email: "info@elpro-installation.dk",
-        cvr: "12345678",
-        momsprocent: 25,
-        standardtekst: "Alle priser er ekskl. moms.",
-        betalingsbetingelser: "Betaling netto 8 dage."
-      };
-    }
-  }
-
-  saveOffer(offer: Offer): string {
-    const id = offer.id || `offer-${Date.now()}`;
-    const offerWithId = { ...offer, id };
-    const filePath = join(OFFERS_DIR, `${id}.json`);
-    writeFileSync(filePath, JSON.stringify(offerWithId, null, 2));
-    return id;
-  }
-
-  getOffer(id: string): Offer | null {
-    try {
-      const filePath = join(OFFERS_DIR, `${id}.json`);
-      if (!existsSync(filePath)) return null;
-      const content = readFileSync(filePath, "utf-8");
-      return JSON.parse(content) as Offer;
-    } catch (error) {
-      console.error("Error reading offer:", error);
-      return null;
-    }
-  }
-
-  getOffers(): Offer[] {
-    try {
-      if (!existsSync(OFFERS_DIR)) return [];
-      const { readdirSync } = require("fs");
-      const files = readdirSync(OFFERS_DIR) as string[];
-      return files
-        .filter((f: string) => f.endsWith(".json"))
-        .map((f: string) => {
-          const content = readFileSync(join(OFFERS_DIR, f), "utf-8");
-          return JSON.parse(content) as Offer;
-        });
-    } catch (error) {
-      console.error("Error reading offers:", error);
-      return [];
-    }
-  }
+function dbRowToProduct(r: {
+  id: string; navn: string; enhed: string; pris1: number; pris2plus: number;
+  kategori: string; beskrivelse: string | null;
+}): Product {
+  return {
+    id: r.id,
+    navn: r.navn,
+    enhed: r.enhed,
+    pris_1: r.pris1,
+    pris_2plus: r.pris2plus,
+    kategori: r.kategori,
+    beskrivelse: r.beskrivelse ?? undefined,
+  };
 }
-
-export const storage = new FileStorage();

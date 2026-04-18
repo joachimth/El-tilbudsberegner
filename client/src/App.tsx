@@ -1,46 +1,93 @@
 import { useState, useCallback } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import EditorPage from "@/pages/editor";
 import PreviewPage from "@/pages/preview";
+import LoginPage from "@/pages/login";
+import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 import type { Offer } from "@/lib/types";
+import type { CurrentUser } from "@/lib/auth";
 
 function Router() {
   const [currentOffer, setCurrentOffer] = useState<Offer | null>(null);
+  const [, navigate] = useLocation();
+
+  const { data: currentUser, isLoading } = useQuery<CurrentUser | null>({
+    queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: Infinity,
+  });
 
   const handleLoadOffer = useCallback((offer: Offer) => {
     setCurrentOffer(offer);
-  }, []);
+    navigate("/editor");
+  }, [navigate]);
 
   const handleOfferChange = useCallback((offer: Offer) => {
     setCurrentOffer(offer);
   }, []);
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Indlæser...</p>
+      </div>
+    );
+  }
+
   return (
     <Switch>
+      {/* Login – tilgængelig for alle */}
+      <Route path="/login">
+        {currentUser ? <Redirect to="/" /> : <LoginPage />}
+      </Route>
+
+      {/* Forside */}
       <Route path="/">
-        <Home onLoadOffer={handleLoadOffer} />
+        {!currentUser
+          ? <Redirect to="/login" />
+          : <Home currentUser={currentUser} onLoadOffer={handleLoadOffer} />}
       </Route>
+
+      {/* Editor */}
       <Route path="/editor">
-        <EditorPage 
-          initialOffer={currentOffer} 
-          onOfferChange={handleOfferChange}
-        />
+        {!currentUser
+          ? <Redirect to="/login" />
+          : <EditorPage initialOffer={currentOffer} onOfferChange={handleOfferChange} currentUser={currentUser} />}
       </Route>
+
+      {/* Forhåndsvisning */}
       <Route path="/preview">
-        <PreviewPage offer={currentOffer} />
+        {!currentUser
+          ? <Redirect to="/login" />
+          : <PreviewPage offer={currentOffer} currentUser={currentUser} />}
       </Route>
+
+      {/* Admin – kun admin-rolle */}
+      <Route path="/admin">
+        {!currentUser
+          ? <Redirect to="/login" />
+          : currentUser.rolle !== "admin"
+            ? <Redirect to="/" />
+            : <AdminPage currentUser={currentUser} />}
+      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -50,5 +97,3 @@ function App() {
     </QueryClientProvider>
   );
 }
-
-export default App;
