@@ -34,9 +34,10 @@ interface OfferSummary {
 interface HomeProps {
   currentUser: CurrentUser;
   onLoadOffer: (offer: Offer) => void;
+  onNewOffer: () => void;
 }
 
-export default function Home({ currentUser, onLoadOffer }: HomeProps) {
+export default function Home({ currentUser, onLoadOffer, onNewOffer }: HomeProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -58,7 +59,7 @@ export default function Home({ currentUser, onLoadOffer }: HomeProps) {
   };
 
   const handleNewOffer = () => {
-    navigate("/editor");
+    onNewOffer();
   };
 
   const handleLoadClick = () => {

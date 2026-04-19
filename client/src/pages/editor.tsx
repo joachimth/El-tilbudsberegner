@@ -61,13 +61,10 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
   };
 
   const handleAddLokation = () => {
-    const commonNames = ["Stue", "Køkken", "Badeværelse", "Soveværelse", "Gang", "Kontor", "Kælder", "Garage", "Have", "Tavlerum"];
-    const usedNames = new Set(offer.lokationer.map(l => l.navn));
-    const suggestedName = commonNames.find(n => !usedNames.has(n)) || `Lokation ${offer.lokationer.length + 1}`;
-
+    const nextNum = offer.lokationer.length + 1;
     setOffer({
       ...offer,
-      lokationer: [...offer.lokationer, createEmptyLokation(suggestedName)]
+      lokationer: [...offer.lokationer, createEmptyLokation(`Rum ${nextNum}`)]
     });
   };
 
