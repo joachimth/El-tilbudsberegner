@@ -191,6 +191,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
                 <span className="hidden sm:inline-block text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
                   {{
                     ev_erhverv: "EV & Erhverv",
+                    ev_erhverv_v2: "EV V2",
                     energi_privat: "Energi",
                     modul_overslag: "Modul",
                   }[offer.skabelon]}

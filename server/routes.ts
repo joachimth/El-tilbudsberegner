@@ -7,6 +7,8 @@ import { offerSchema } from "@shared/schema";
 import type { Offer } from "@shared/schema";
 import type { Product, Config } from "@shared/schema";
 import { z } from "zod";
+import { renderEvErhvervV2 } from "./templates/ev_erhverv_v2.js";
+import { htmlToPdf } from "./templates/pdf.js";
 
 // ── HTML-generator (skabelon-specifik) ───────────────────────────────────────
 
@@ -22,7 +24,7 @@ function genererHtml(offer: Offer, products: Product[], config: Config): string 
   const lp = (id: string, antal: number) => antal * ep(id, antal);
 
   // Beregn totaler
-  type LokMed = { navn: string; beskrivelse?: string; subtotal: number; linjerHtml: string };
+  type LokMed = { navn: string; beskrivelse?: string; subtotal: number; linjerHtml: string; linjer: typeof offer.lokationer[0]["linjer"] };
   const loks: LokMed[] = offer.lokationer.map(lok => {
     let sub = 0;
     const linjerHtml = lok.linjer.map(l => {
@@ -34,7 +36,7 @@ function genererHtml(offer: Offer, products: Product[], config: Config): string 
         <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;">${fmtDKK(e)}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;font-weight:500;">${fmtDKK(line)}</td></tr>`;
     }).join("");
-    return { navn: lok.navn, beskrivelse: lok.beskrivelse, subtotal: sub, linjerHtml };
+    return { navn: lok.navn, beskrivelse: lok.beskrivelse, subtotal: sub, linjerHtml, linjer: lok.linjer };
   });
   const total = loks.reduce((s, l) => s + l.subtotal, 0);
   const moms = total * (config.momsprocent / 100);
@@ -95,6 +97,11 @@ function genererHtml(offer: Offer, products: Product[], config: Config): string 
   const forbehold = offer.bemærkninger
     ? offer.bemærkninger.split("\n").filter(l => l.trim()).map(l => `<li>${l.replace(/^[-•]\s*/, "")}</li>`).join("")
     : "";
+
+  // ── EV_ERHVERV_V2 ──
+  if (offer.skabelon === "ev_erhverv_v2") {
+    return renderEvErhvervV2(offer, products, config, offer.v2);
+  }
 
   // ── EV_ERHVERV ──
   if (offer.skabelon === "ev_erhverv") {
@@ -337,6 +344,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (err) {
       console.error("HTML export error:", err);
       res.status(500).json({ error: "Kunne ikke generere HTML" });
+    }
+  });
+
+  // ── PDF-eksport ───────────────────────────────────────────────────────
+
+  app.post("/api/pdf-export", requireAuth, async (req, res) => {
+    try {
+      const parseResult = offerSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Ugyldigt tilbud", details: parseResult.error.errors });
+      }
+      const offer = parseResult.data;
+      const products = await storage.getProducts();
+      const config = await storage.getConfig();
+      const html = genererHtml(offer, products, config);
+      const pdf = await htmlToPdf(html);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="tilbud-${offer.meta.tilbudNr || "draft"}.pdf"`);
+      res.send(pdf);
+    } catch (err) {
+      console.error("PDF export error:", err);
+      res.status(500).json({ error: "Kunne ikke generere PDF" });
     }
   });
 

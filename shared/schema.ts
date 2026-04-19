@@ -56,16 +56,59 @@ export const momsSchema = z.object({
 
 export type Moms = z.infer<typeof momsSchema>;
 
-export type Skabelon = "standard" | "ev_erhverv" | "energi_privat" | "modul_overslag";
+export type Skabelon = "standard" | "ev_erhverv" | "energi_privat" | "modul_overslag" | "ev_erhverv_v2";
+
+export type PricingMode = "section_total" | "line_items" | "line_items_with_total" | "hidden_prices";
+
+export const v2SektionSchema = z.object({
+  lokationNavn: z.string(),
+  billedeUrl: z.string().optional(),
+  pricingMode: z.enum(["section_total", "line_items", "line_items_with_total", "hidden_prices"]).optional(),
+});
+
+export const v2FordelSchema = z.object({
+  ikon: z.string().optional(),
+  titel: z.string(),
+  tekst: z.string().optional(),
+});
+
+export const v2SalgsblokSchema = z.object({
+  type: z.enum(["fordele", "cta", "garanti"]),
+  overskrift: z.string().optional(),
+  tekst: z.string().optional(),
+  punkter: z.array(z.string()).optional(),
+});
+
+export const v2DataSchema = z.object({
+  hero: z.object({
+    overskrift: z.string().optional(),
+    underoverskrift: z.string().optional(),
+    billedeUrl: z.string().optional(),
+  }).optional(),
+  globalPricingMode: z.enum(["section_total", "line_items", "line_items_with_total", "hidden_prices"]).default("line_items"),
+  sektioner: z.array(v2SektionSchema).default([]),
+  fordele: z.array(v2FordelSchema).optional(),
+  salgsblokke: z.array(v2SalgsblokSchema).optional(),
+  kontaktperson: z.object({
+    navn: z.string().optional(),
+    titel: z.string().optional(),
+    telefon: z.string().optional(),
+    email: z.string().optional(),
+    billedeUrl: z.string().optional(),
+  }).optional(),
+});
+
+export type V2Data = z.infer<typeof v2DataSchema>;
 
 export const offerSchema = z.object({
   id: z.string().optional(),
-  skabelon: z.enum(["standard", "ev_erhverv", "energi_privat", "modul_overslag"]).default("standard"),
+  skabelon: z.enum(["standard", "ev_erhverv", "energi_privat", "modul_overslag", "ev_erhverv_v2"]).default("standard"),
   meta: metaSchema,
   kunde: kundeSchema,
   moms: momsSchema,
   bemærkninger: z.string().default(""),
   lokationer: z.array(lokationSchema),
+  v2: v2DataSchema.optional(),
 });
 
 export type Offer = z.infer<typeof offerSchema>;
