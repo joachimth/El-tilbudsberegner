@@ -9,9 +9,12 @@ import EditorPage from "@/pages/editor";
 import PreviewPage from "@/pages/preview";
 import LoginPage from "@/pages/login";
 import AdminPage from "@/pages/admin";
+import TemplateSelector from "@/pages/template-selector";
 import NotFound from "@/pages/not-found";
 import type { Offer } from "@/lib/types";
 import type { CurrentUser } from "@/lib/auth";
+import type { Skabelon } from "@shared/schema";
+import { createEmptyOffer } from "@/lib/offer-utils";
 
 function Router() {
   const [currentOffer, setCurrentOffer] = useState<Offer | null>(null);
@@ -34,7 +37,11 @@ function Router() {
   }, [navigate]);
 
   const handleNewOffer = useCallback(() => {
-    setCurrentOffer(null);
+    navigate("/template-selector");
+  }, [navigate]);
+
+  const handleTemplateSelected = useCallback((skabelon: Skabelon) => {
+    setCurrentOffer(createEmptyOffer(skabelon));
     navigate("/editor");
   }, [navigate]);
 
@@ -76,6 +83,13 @@ function Router() {
         {!currentUser
           ? <Redirect to="/login" />
           : <PreviewPage offer={currentOffer} currentUser={currentUser} />}
+      </Route>
+
+      {/* Template-vælger */}
+      <Route path="/template-selector">
+        {!currentUser
+          ? <Redirect to="/login" />
+          : <TemplateSelector onSelect={handleTemplateSelected} />}
       </Route>
 
       {/* Admin – kun admin-rolle */}
