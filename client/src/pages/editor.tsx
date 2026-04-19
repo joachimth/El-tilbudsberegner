@@ -1,31 +1,37 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Plus, Eye, Download, Menu, X, MapPin, User, Calculator } from "lucide-react";
+import { ArrowLeft, Plus, Eye, Download, Menu, X, MapPin, User, Calculator, Save, LogOut, Settings, Cloud, CloudCheck } from "lucide-react";
 import { KundeInfoForm } from "@/components/kunde-info-form";
 import { LokationEditor } from "@/components/lokation-editor";
 import { SummaryPanel } from "@/components/summary-panel";
 import { createEmptyOffer, createEmptyLokation, calculateOfferTotals, downloadAsJson } from "@/lib/offer-utils";
 import type { Offer, Product, Config, Lokation } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { logout } from "@/lib/auth";
+import type { CurrentUser } from "@/lib/auth";
 import { formatDKK } from "@shared/schema";
 
 interface EditorPageProps {
   initialOffer: Offer | null;
   onOfferChange: (offer: Offer) => void;
+  currentUser: CurrentUser;
 }
 
 type MobileTab = "lokationer" | "kunde" | "resume";
 
-export default function EditorPage({ initialOffer, onOfferChange }: EditorPageProps) {
+export default function EditorPage({ initialOffer, onOfferChange, currentUser }: EditorPageProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [offer, setOffer] = useState<Offer>(() => initialOffer || createEmptyOffer());
   const [mobileTab, setMobileTab] = useState<MobileTab>("lokationer");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (initialOffer) {
@@ -85,16 +91,48 @@ export default function EditorPage({ initialOffer, onOfferChange }: EditorPagePr
     setOffer({ ...offer, lokationer: newLokationer });
   };
 
-  const handleSave = () => {
+  const handleSaveToServer = async () => {
+    setSaving(true);
+    try {
+      const isUpdate = !!offer.id;
+      const url = isUpdate ? `/api/offers/${offer.id}` : "/api/offers";
+      const method = isUpdate ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(offer),
+      });
+      if (!res.ok) throw new Error("Gemning fejlede");
+      const saved: Offer = await res.json();
+      setOffer(saved);
+      onOfferChange(saved);
+      queryClient.invalidateQueries({ queryKey: ["/api/offers"] });
+      toast({ title: "Gemt", description: "Tilbud gemt til serveren." });
+    } catch (err) {
+      toast({ title: "Fejl", description: err instanceof Error ? err.message : "Kunne ikke gemme.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+      setMenuOpen(false);
+    }
+  };
+
+  const handleSaveJson = () => {
     const filename = offer.meta.projektnavn
       ? `tilbud-${offer.meta.projektnavn.toLowerCase().replace(/\s+/g, '-')}.json`
       : `tilbud-${offer.meta.tilbudNr || 'draft'}.json`;
     downloadAsJson(offer, filename);
     toast({
-      title: "Tilbud gemt",
-      description: `Filen "${filename}" er downloadet.`,
+      title: "Fil downloadet",
+      description: `"${filename}" er downloadet.`,
     });
     setMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    queryClient.setQueryData(["/api/auth/me"], null);
+    navigate("/login");
   };
 
   const handlePreview = () => {
@@ -125,11 +163,11 @@ export default function EditorPage({ initialOffer, onOfferChange }: EditorPagePr
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Click-outside overlay: lukker mobilmenu ved tryk udenfor */}
-      {menuOpen && (
+      {/* Overlays: lukker dropdowns ved tryk udenfor */}
+      {(menuOpen || userMenuOpen) && (
         <div
-          className="fixed inset-0 z-40 md:hidden"
-          onClick={() => setMenuOpen(false)}
+          className="fixed inset-0 z-40"
+          onClick={() => { setMenuOpen(false); setUserMenuOpen(false); }}
           aria-hidden="true"
         />
       )}
@@ -151,18 +189,60 @@ export default function EditorPage({ initialOffer, onOfferChange }: EditorPagePr
             <h1 className="font-semibold truncate text-base" data-testid="text-offer-title">
               {offer.meta.projektnavn || "Nyt tilbud"}
             </h1>
+            {offer.id && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <CloudCheck className="w-3 h-3" />
+                Gemt til server
+              </p>
+            )}
           </div>
 
           {/* Desktop actions */}
           <div className="hidden md:flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleSave} data-testid="button-save">
+            <Button variant="outline" size="sm" onClick={handleSaveJson} data-testid="button-save-json">
               <Download className="w-4 h-4 mr-2" />
-              Gem
+              JSON
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSaveToServer} disabled={saving} data-testid="button-save-server">
+              <Cloud className="w-4 h-4 mr-2" />
+              {saving ? "Gemmer..." : "Gem"}
             </Button>
             <Button size="sm" onClick={handlePreview} data-testid="button-preview">
               <Eye className="w-4 h-4 mr-2" />
               Forhåndsvis
             </Button>
+            {/* User menu desktop */}
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={e => { e.stopPropagation(); setUserMenuOpen(!userMenuOpen); }}
+                className="gap-1.5"
+              >
+                <User className="w-4 h-4" />
+                <span className="max-w-[80px] truncate">{currentUser.brugernavn}</span>
+              </Button>
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-card border rounded-lg shadow-lg py-1 z-10" onClick={e => e.stopPropagation()}>
+                  {currentUser.rolle === "admin" && (
+                    <button
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2"
+                      onClick={() => { setUserMenuOpen(false); navigate("/admin"); }}
+                    >
+                      <Settings className="w-4 h-4" />
+                      Admin panel
+                    </button>
+                  )}
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2 text-destructive"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Log ud
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Mobile menu button */}
@@ -170,7 +250,7 @@ export default function EditorPage({ initialOffer, onOfferChange }: EditorPagePr
             variant="ghost"
             size="icon"
             className="md:hidden shrink-0"
-            onClick={() => setMenuOpen(!menuOpen)}
+            onClick={e => { e.stopPropagation(); setMenuOpen(!menuOpen); setUserMenuOpen(false); }}
             data-testid="button-menu"
           >
             {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -179,15 +259,25 @@ export default function EditorPage({ initialOffer, onOfferChange }: EditorPagePr
 
         {/* Mobile dropdown menu */}
         {menuOpen && (
-          <div className="md:hidden border-t bg-card px-4 py-3 space-y-2 animate-in slide-in-from-top-2 relative z-10">
+          <div className="md:hidden border-t bg-card px-4 py-3 space-y-2 animate-in slide-in-from-top-2 relative z-10" onClick={e => e.stopPropagation()}>
             <Button
               variant="outline"
               className="w-full justify-start h-12"
-              onClick={handleSave}
-              data-testid="button-save-mobile"
+              onClick={handleSaveToServer}
+              disabled={saving}
+              data-testid="button-save-server-mobile"
+            >
+              <Cloud className="w-5 h-5 mr-3" />
+              {saving ? "Gemmer..." : "Gem til server"}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start h-12"
+              onClick={handleSaveJson}
+              data-testid="button-save-json-mobile"
             >
               <Download className="w-5 h-5 mr-3" />
-              Gem som JSON
+              Download som JSON
             </Button>
             <Button
               className="w-full justify-start h-12"
@@ -197,6 +287,27 @@ export default function EditorPage({ initialOffer, onOfferChange }: EditorPagePr
               <Eye className="w-5 h-5 mr-3" />
               Forhåndsvis tilbud
             </Button>
+            <div className="border-t pt-2 mt-2">
+              <div className="px-1 py-1 text-xs text-muted-foreground mb-1">{currentUser.brugernavn}</div>
+              {currentUser.rolle === "admin" && (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start h-10 text-sm"
+                  onClick={() => { setMenuOpen(false); navigate("/admin"); }}
+                >
+                  <Settings className="w-4 h-4 mr-3" />
+                  Admin panel
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                className="w-full justify-start h-10 text-sm text-destructive hover:text-destructive"
+                onClick={handleLogout}
+              >
+                <LogOut className="w-4 h-4 mr-3" />
+                Log ud
+              </Button>
+            </div>
           </div>
         )}
       </header>

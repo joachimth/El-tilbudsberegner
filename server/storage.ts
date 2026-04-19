@@ -1,5 +1,5 @@
 import { db, brugere, produkter, tilbud, indstillinger } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { hashPassword } from "./auth";
 import type { Product, Config, Offer } from "@shared/schema";
 
@@ -147,7 +147,7 @@ export class DbStorage {
           oprettetAt: tilbud.oprettetAt,
           opdateretAt: tilbud.opdateretAt,
           brugerId: tilbud.brugerId,
-        }).from(tilbud).orderBy(tilbud.opdateretAt)
+        }).from(tilbud).orderBy(desc(tilbud.opdateretAt))
       : await db.select({
           id: tilbud.id,
           titel: tilbud.titel,
@@ -155,7 +155,7 @@ export class DbStorage {
           oprettetAt: tilbud.oprettetAt,
           opdateretAt: tilbud.opdateretAt,
           brugerId: tilbud.brugerId,
-        }).from(tilbud).where(eq(tilbud.brugerId, userId!)).orderBy(tilbud.opdateretAt);
+        }).from(tilbud).where(eq(tilbud.brugerId, userId!)).orderBy(desc(tilbud.opdateretAt));
     return rows.map(r => ({ ...r, id: String(r.id) }));
   }
 
