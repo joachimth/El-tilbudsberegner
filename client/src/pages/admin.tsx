@@ -80,12 +80,13 @@ function beregnKalkuleret(p: Partial<AdminProduct>, timepris: number) {
 // ── Produkt-dialog ─────────────────────────────────────────────────────────────
 
 function ProduktDialog({
-  open, onClose, initial, timepris,
+  open, onClose, initial, timepris, kategorier,
 }: {
   open: boolean;
   onClose: () => void;
   initial: Partial<AdminProduct> | null;
   timepris: number;
+  kategorier: string[];
 }) {
   const [form, setForm] = useState<Partial<AdminProduct>>(initial || emptyProduct());
   const isNew = !initial?.id || (initial && !("pris_1" in initial));
@@ -143,8 +144,16 @@ function ProduktDialog({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Kategori <span className="text-destructive">*</span></Label>
-              <Input value={form.kategori || ""} onChange={e => set("kategori", e.target.value)}
-                placeholder="fx Belysning" className="mt-1.5 h-11 text-base" />
+              <input
+                list="kategori-forslag"
+                value={form.kategori || ""}
+                onChange={e => set("kategori", e.target.value)}
+                placeholder="fx Belysning"
+                className="mt-1.5 h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <datalist id="kategori-forslag">
+                {kategorier.map(k => <option key={k} value={k} />)}
+              </datalist>
             </div>
             <div>
               <Label>Enhed <span className="text-destructive">*</span></Label>
@@ -330,6 +339,7 @@ function ProdukterTab({ timepris }: { timepris: number }) {
           onClose={() => { setDialogOpen(false); setEditTarget(null); }}
           initial={editTarget}
           timepris={timepris}
+          kategorier={kategorier}
         />
       )}
 

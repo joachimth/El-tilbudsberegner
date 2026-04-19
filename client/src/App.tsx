@@ -33,6 +33,11 @@ function Router() {
     navigate("/editor");
   }, [navigate]);
 
+  const handleNewOffer = useCallback(() => {
+    setCurrentOffer(null);
+    navigate("/editor");
+  }, [navigate]);
+
   const handleOfferChange = useCallback((offer: Offer) => {
     setCurrentOffer(offer);
   }, []);
@@ -56,7 +61,7 @@ function Router() {
       <Route path="/">
         {!currentUser
           ? <Redirect to="/login" />
-          : <Home currentUser={currentUser} onLoadOffer={handleLoadOffer} />}
+          : <Home currentUser={currentUser} onLoadOffer={handleLoadOffer} onNewOffer={handleNewOffer} />}
       </Route>
 
       {/* Editor */}

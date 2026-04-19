@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Plus, Trash2, MapPin, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -13,6 +12,17 @@ import {
 import { LinjeEditor } from "./linje-editor";
 import type { Lokation, Product } from "@/lib/types";
 import { formatDKK, beregnLinjepris } from "@shared/schema";
+
+const RUM_FORSLAG = [
+  // Private
+  "Stue", "Køkken", "Alrum", "Badeværelse", "Soveværelse", "Værelse",
+  "Gang", "Entré", "Bryggers", "Kontor", "Kælder", "Loft", "Garage",
+  "Have", "Terrasse", "Carport",
+  // Erhverv
+  "Mødelokale", "Reception", "Serverrum", "Fællesareal", "Kantine",
+  "Lager", "Produktion", "Toilet", "Teknikrum", "Tavlerum",
+  "Elevator", "Facade", "Parkeringsplads", "Udvendig belysning",
+];
 
 interface LokationEditorProps {
   lokation: Lokation;
@@ -98,15 +108,21 @@ export function LokationEditor({
             
             <div className="flex-1 min-w-0">
               {isEditingName ? (
-                <Input
-                  value={lokation.navn}
-                  onChange={e => handleNameChange(e.target.value)}
-                  onBlur={() => setIsEditingName(false)}
-                  onKeyDown={e => e.key === "Enter" && setIsEditingName(false)}
-                  className="h-10 text-base font-medium"
-                  autoFocus
-                  data-testid="input-lokation-navn"
-                />
+                <>
+                  <input
+                    list="rum-forslag"
+                    value={lokation.navn}
+                    onChange={e => handleNameChange(e.target.value)}
+                    onBlur={() => setIsEditingName(false)}
+                    onKeyDown={e => e.key === "Enter" && setIsEditingName(false)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    autoFocus
+                    data-testid="input-lokation-navn"
+                  />
+                  <datalist id="rum-forslag">
+                    {RUM_FORSLAG.map(navn => <option key={navn} value={navn} />)}
+                  </datalist>
+                </>
               ) : (
                 <button
                   className="text-left w-full"
