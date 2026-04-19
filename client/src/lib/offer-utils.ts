@@ -1,4 +1,4 @@
-import type { Product, Offer, Lokation } from "@shared/schema";
+import type { Product, Offer, Lokation, Skabelon } from "@shared/schema";
 import { beregnEnhedspris, beregnLinjepris } from "@shared/schema";
 import type { OfferWithTotals, LokationWithTotals, LinjeWithProduct } from "./types";
 
@@ -63,12 +63,13 @@ export function calculateOfferTotals(
   };
 }
 
-export function createEmptyOffer(): Offer {
+export function createEmptyOffer(skabelon: Skabelon = "standard"): Offer {
   const today = new Date().toISOString().split('T')[0];
   const year = new Date().getFullYear();
   const randomNum = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-  
+
   return {
+    skabelon,
     meta: {
       projektnavn: "",
       dato: today,

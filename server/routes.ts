@@ -4,7 +4,209 @@ import passport from "passport";
 import { storage } from "./storage";
 import { requireAuth, requireAdmin, hashPassword } from "./auth";
 import { offerSchema } from "@shared/schema";
+import type { Offer } from "@shared/schema";
+import type { Product, Config } from "@shared/schema";
 import { z } from "zod";
+
+// ── HTML-generator (skabelon-specifik) ───────────────────────────────────────
+
+function genererHtml(offer: Offer, products: Product[], config: Config): string {
+  const pm = new Map(products.map(p => [p.id, p]));
+  const fmtDKK = (n: number) =>
+    new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK" }).format(n);
+  const fmtDate = (s: string) => {
+    try { return new Date(s).toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" }); }
+    catch { return s; }
+  };
+  const ep = (id: string, antal: number) => { const p = pm.get(id); if (!p) return 0; return antal === 1 ? p.pris_1 : p.pris_2plus; };
+  const lp = (id: string, antal: number) => antal * ep(id, antal);
+
+  // Beregn totaler
+  type LokMed = { navn: string; beskrivelse?: string; subtotal: number; linjerHtml: string };
+  const loks: LokMed[] = offer.lokationer.map(lok => {
+    let sub = 0;
+    const linjerHtml = lok.linjer.map(l => {
+      const p = pm.get(l.productId); if (!p) return "";
+      const e = ep(l.productId, l.antal), line = lp(l.productId, l.antal);
+      sub += line;
+      return `<tr><td style="padding:8px 6px;border-bottom:1px solid #eee;">${p.navn}</td>
+        <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:center;">${l.antal} ${p.enhed}</td>
+        <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;">${fmtDKK(e)}</td>
+        <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;font-weight:500;">${fmtDKK(line)}</td></tr>`;
+    }).join("");
+    return { navn: lok.navn, beskrivelse: lok.beskrivelse, subtotal: sub, linjerHtml };
+  });
+  const total = loks.reduce((s, l) => s + l.subtotal, 0);
+  const moms = total * (config.momsprocent / 100);
+  const totalInkl = total + moms;
+  const slutpris = offer.moms.visInkl ? totalInkl : total;
+  const slutLabel = offer.moms.visInkl ? "Samlet pris inkl. moms" : "Samlet pris ekskl. moms";
+
+  const CSS = `*{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.5;background:#fff;}
+    h1,h2,h3,h4{margin-top:0;}
+    @page{margin:20mm;}
+    .band{background:#1f4d6b;color:#fff;padding:10px 32px;font-size:12px;letter-spacing:.03em;}
+    .inner{padding:40px;}
+    .hoved{display:flex;justify-content:space-between;gap:24px;margin-bottom:28px;padding-bottom:24px;border-bottom:2px solid #111;flex-wrap:wrap;}
+    .firma{font-weight:700;font-size:18px;color:#1f4d6b;margin-bottom:8px;}
+    .meta{font-size:13px;color:#6b7280;line-height:1.6;}
+    table{width:100%;border-collapse:collapse;}
+    th{padding:10px 6px;text-align:left;font-size:13px;color:#6b7280;border-bottom:1px solid #d1d5db;font-weight:500;}
+    th:last-child,td:last-child{text-align:right;white-space:nowrap;}
+    th:nth-child(2),td:nth-child(2){text-align:center;width:90px;}
+    .prisboks{display:flex;justify-content:flex-end;margin-top:20px;}
+    .prisboks-inner{min-width:280px;border:2px solid #1f4d6b;border-radius:12px;padding:16px 18px;background:#eaf2f7;}
+    .prisboks-label{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:6px;}
+    .prisboks-amount{font-size:28px;font-weight:700;color:#111827;}
+    .forbehold{border:1px solid #ead7a3;background:#fff8e6;border-radius:10px;padding:14px 16px;margin-top:14px;}
+    .god{border:1px solid #b8ddc2;background:#eef8f1;border-radius:10px;padding:14px 16px;margin-top:14px;}
+    ul{padding-left:20px;}li{margin-bottom:6px;font-size:13px;}
+    .modul{border-top:4px solid #1f4d6b;border-left:1px solid #d1d5db;border-right:1px solid #d1d5db;border-bottom:1px solid #d1d5db;border-radius:10px;padding:18px;margin-bottom:16px;}
+    .modul-row{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap;}
+    .modul-titel{font-size:18px;font-weight:700;}
+    .modul-pris{font-size:20px;font-weight:700;white-space:nowrap;}
+    .section{margin-bottom:28px;}
+    .section h2{font-size:16px;font-weight:600;margin-bottom:12px;}
+    footer{margin-top:40px;padding-top:20px;border-top:1px solid #d1d5db;font-size:12px;color:#6b7280;}`;
+
+  const hoved = `<div class="hoved">
+    <div><div class="firma">${config.firmanavn}</div>
+    <div class="meta">${[config.adresse, config.postnrBy, config.telefon ? "Tlf. "+config.telefon : "", config.email].filter(Boolean).join("<br>")}</div></div>
+    <div class="meta" style="text-align:right;">
+      ${offer.kunde.navn ? `<strong>Kunde:</strong> ${offer.kunde.navn}<br>` : ""}
+      ${offer.kunde.adresse ? `${offer.kunde.adresse}<br>` : ""}
+      ${offer.meta.dato ? `<strong>Dato:</strong> ${fmtDate(offer.meta.dato)}<br>` : ""}
+      ${offer.meta.tilbudNr ? `<strong>Ref.:</strong> ${offer.meta.tilbudNr}` : ""}
+    </div></div>`;
+
+  const prisboks = `<div class="prisboks"><div class="prisboks-inner">
+    <div class="prisboks-label">${slutLabel}</div>
+    <div class="prisboks-amount">${fmtDKK(slutpris)}</div>
+  </div></div>`;
+
+  const footer = `<footer>${config.standardtekst ? `<p style="margin-bottom:10px;">${config.standardtekst}</p>` : ""}
+    ${config.betalingsbetingelser ? `<p>${config.betalingsbetingelser}</p>` : ""}</footer>`;
+
+  const wrap = (band: string, body: string) =>
+    `<!DOCTYPE html><html lang="da"><head><meta charset="UTF-8"><title>Tilbud ${offer.meta.tilbudNr||""}</title><style>${CSS}</style></head>
+    <body><div class="band">${band}</div><div class="inner">${body}</div></body></html>`;
+
+  const forbehold = offer.bemærkninger
+    ? offer.bemærkninger.split("\n").filter(l => l.trim()).map(l => `<li>${l.replace(/^[-•]\s*/, "")}</li>`).join("")
+    : "";
+
+  // ── EV_ERHVERV ──
+  if (offer.skabelon === "ev_erhverv") {
+    const tabeller = loks.map(lok => `
+      ${loks.length > 1 ? `<h3 style="font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:16px 0 8px;">${lok.navn}</h3>` : ""}
+      <table><thead><tr><th>Beskrivelse</th><th>Antal</th><th>Pris</th></tr></thead>
+      <tbody>${lok.linjerHtml.replace(/<td[^>]*>[^<]*<\/td>\s*$/gm, "").replace(/<td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;">/g, '<td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;">')}</tbody></table>`).join("");
+
+    // Genbyg tabel uden enhedspris-kolonne (3 kolonner)
+    const tbl3 = loks.map(lok => {
+      const rækker = lok.linjer.map(l => {
+        const p = pm.get(l.productId); if (!p) return "";
+        const line = lp(l.productId, l.antal);
+        return `<tr><td style="padding:10px 6px;border-bottom:1px solid #eee;">${p.navn}</td>
+          <td style="padding:10px 6px;border-bottom:1px solid #eee;text-align:center;">${l.antal} ${p.enhed}</td>
+          <td style="padding:10px 6px;border-bottom:1px solid #eee;text-align:right;">${fmtDKK(line)}</td></tr>`;
+      }).join("");
+      return `${loks.length > 1 ? `<h3 style="font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:16px 0 8px;">${lok.navn}</h3>` : ""}
+        <table><thead><tr><th>Beskrivelse</th><th>Antal</th><th>Pris</th></tr></thead><tbody>${rækker}</tbody></table>`;
+    }).join("");
+
+    return wrap("EV &amp; Erhverv · Tilbud", `
+      ${hoved}
+      <h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">${offer.meta.projektnavn || "Tilbud"}</h1>
+      <p style="color:#6b7280;margin-bottom:24px;font-size:13px;">Kompakt erhvervstilbud</p>
+      <div class="section"><h2>Prissætning</h2>${tbl3}${prisboks}</div>
+      ${forbehold ? `<div class="section"><h2>Generelle forbehold</h2><div class="forbehold"><ul>${forbehold}</ul></div></div>` : ""}
+      ${footer}`);
+  }
+
+  // ── ENERGI_PRIVAT ──
+  if (offer.skabelon === "energi_privat") {
+    const løsning = loks.map(lok => `
+      <div style="border:1px solid #d1d5db;border-radius:10px;padding:14px 16px;background:#fafbfc;break-inside:avoid;">
+        <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:8px;">${lok.navn}</h4>
+        <ul>${lok.linjer.map(l => { const p = pm.get(l.productId); return p ? `<li>${p.navn} (${l.antal} ${p.enhed})</li>` : ""; }).join("")}</ul>
+      </div>`).join("");
+
+    return wrap("Energi &amp; Privat · Tilbud", `
+      ${hoved}
+      <h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">${offer.meta.projektnavn || "Tilbud"}</h1>
+      <p style="color:#6b7280;margin-bottom:24px;font-size:13px;">Vi er glade for at præsentere vores tilbud. Løsningen er sammensat med fokus på driftssikkerhed og energibesparelse.</p>
+      ${loks.length > 0 ? `<div class="section"><h2>Løsningen indeholder</h2>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;">${løsning}</div></div>` : ""}
+      ${forbehold ? `<div class="section"><h2>Bemærkninger og aftalte forhold</h2><div class="forbehold"><ul>${forbehold}</ul></div></div>` : ""}
+      <div class="section"><h2>Samlet pris</h2>${prisboks}
+        <p style="font-size:13px;color:#6b7280;margin-top:12px;">Gyldighed: 30 dage fra tilbudsdato.</p></div>
+      <div class="section"><h2>Vores opgave</h2><div class="god"><ul>
+        <li>Installation og opsætning af anlæg</li>
+        <li>Tilmelding til netselskab (hvis relevant)</li>
+        <li>Vejledning i styring og overvågning</li>
+      </ul></div></div>
+      ${footer}`);
+  }
+
+  // ── MODUL_OVERSLAG ──
+  if (offer.skabelon === "modul_overslag") {
+    const moduler = loks.map(lok => {
+      const rækker = lok.linjer.map(l => {
+        const p = pm.get(l.productId); if (!p) return "";
+        return `<tr><td style="padding:6px 4px;border-bottom:1px solid #f3f4f6;font-size:13px;">${p.navn}</td>
+          <td style="padding:6px 4px;border-bottom:1px solid #f3f4f6;text-align:right;font-size:13px;color:#9ca3af;">${l.antal} ${p.enhed}</td>
+          <td style="padding:6px 4px;border-bottom:1px solid #f3f4f6;text-align:right;font-size:13px;">${fmtDKK(lp(l.productId,l.antal))}</td></tr>`;
+      }).join("");
+      return `<div class="modul">
+        <div class="modul-row"><div class="modul-titel">${lok.navn}</div><div class="modul-pris">${fmtDKK(lok.subtotal)}</div></div>
+        ${lok.beskrivelse ? `<p style="font-size:13px;color:#6b7280;margin-bottom:10px;">${lok.beskrivelse}</p>` : ""}
+        ${rækker ? `<table style="margin-top:6px;"><tbody>${rækker}</tbody></table>` : ""}
+      </div>`;
+    }).join("");
+
+    return wrap("Modul Overslag", `
+      ${hoved}
+      <h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">Overslagspris</h1>
+      <p style="color:#6b7280;margin-bottom:24px;font-size:13px;">${offer.meta.projektnavn || "Flerfagligt projekt"}</p>
+      ${forbehold ? `<div class="section"><h2>Forudsætninger</h2>
+        <div style="border:1px solid #d1d5db;border-radius:10px;padding:14px 16px;background:#fafbfc;"><ul>${forbehold}</ul></div></div>` : ""}
+      <div class="section">${moduler}</div>
+      <div class="section"><h2>Samlet overslag</h2>${prisboks}</div>
+      ${footer}`);
+  }
+
+  // ── STANDARD ──
+  const lokSektioner = loks.map(lok => `
+    <div class="section">
+      <h2 style="font-size:15px;padding-bottom:8px;border-bottom:1px solid #d1d5db;">${lok.navn}</h2>
+      <table><thead><tr><th>Produkt</th><th>Antal</th><th>Enhedspris</th><th>Linjepris</th></tr></thead>
+      <tbody>${lok.linjerHtml}</tbody>
+      <tfoot><tr><td colspan="3" style="padding:8px 6px;text-align:right;font-weight:500;color:#6b7280;">Subtotal ${lok.navn}:</td>
+        <td style="padding:8px 6px;text-align:right;font-weight:600;">${fmtDKK(lok.subtotal)}</td></tr></tfoot>
+    </table></div>`).join("");
+
+  return wrap("Tilbud", `
+    ${hoved}
+    <h1 style="font-size:26px;font-weight:700;margin-bottom:20px;">${offer.meta.projektnavn || "Tilbud"}</h1>
+    ${lokSektioner}
+    <div style="margin-top:24px;padding-top:20px;border-top:2px solid #111;display:flex;justify-content:flex-end;">
+      <div style="min-width:240px;">
+        <div style="display:flex;justify-content:space-between;color:#6b7280;margin-bottom:6px;">
+          <span>Subtotal ekskl. moms:</span><span>${fmtDKK(total)}</span></div>
+        ${offer.moms.visInkl ? `<div style="display:flex;justify-content:space-between;color:#6b7280;margin-bottom:6px;">
+          <span>Moms (${config.momsprocent}%):</span><span>${fmtDKK(moms)}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding-top:8px;border-top:1px solid #d1d5db;">
+          <span>Total inkl. moms:</span><span style="color:#1f4d6b;">${fmtDKK(totalInkl)}</span></div>` :
+          `<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding-top:8px;border-top:1px solid #d1d5db;">
+          <span>Total ekskl. moms:</span><span style="color:#1f4d6b;">${fmtDKK(total)}</span></div>`}
+      </div></div>
+    ${offer.bemærkninger ? `<div style="margin-top:28px;padding:16px;background:#f9fafb;border-radius:8px;">
+      <h3 style="font-weight:600;margin-bottom:8px;">Bemærkninger</h3>
+      <p style="font-size:13px;color:#6b7280;white-space:pre-wrap;">${offer.bemærkninger}</p></div>` : ""}
+    ${footer}`);
+}
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
 
@@ -125,131 +327,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!parseResult.success) {
         return res.status(400).json({ error: "Ugyldigt tilbud", details: parseResult.error.errors });
       }
-
       const offer = parseResult.data;
       const products = await storage.getProducts();
       const config = await storage.getConfig();
-
-      const productMap = new Map(products.map(p => [p.id, p]));
-
-      const beregnEnhedspris = (productId: string, antal: number): number => {
-        const p = productMap.get(productId);
-        if (!p) return 0;
-        return antal === 1 ? p.pris_1 : p.pris_2plus;
-      };
-      const beregnLinjepris = (productId: string, antal: number): number =>
-        antal * beregnEnhedspris(productId, antal);
-
-      const fmtDKK = (n: number) =>
-        new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK" }).format(n);
-      const fmtDate = (s: string) => {
-        try { return new Date(s).toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" }); }
-        catch { return s; }
-      };
-
-      let total = 0;
-      const lokHtml = offer.lokationer.map(lok => {
-        let lokSub = 0;
-        const linjerHtml = lok.linjer.map(l => {
-          const p = productMap.get(l.productId);
-          if (!p) return "";
-          const ep = beregnEnhedspris(l.productId, l.antal);
-          const lp = beregnLinjepris(l.productId, l.antal);
-          lokSub += lp;
-          return `<tr>
-            <td style="padding:8px;border-bottom:1px solid #eee;">${p.navn}</td>
-            <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${l.antal} ${p.enhed}</td>
-            <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${fmtDKK(ep)}</td>
-            <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;font-weight:500;">${fmtDKK(lp)}</td>
-          </tr>`;
-        }).join("");
-        total += lokSub;
-        return `<div style="margin-bottom:24px;">
-          <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #2563eb;">${lok.navn}</h3>
-          <table style="width:100%;border-collapse:collapse;font-size:13px;">
-            <thead><tr style="color:#666;border-bottom:1px solid #ddd;">
-              <th style="padding:8px;text-align:left;font-weight:500;">Produkt</th>
-              <th style="padding:8px;text-align:center;font-weight:500;width:80px;">Antal</th>
-              <th style="padding:8px;text-align:right;font-weight:500;width:100px;">Enhedspris</th>
-              <th style="padding:8px;text-align:right;font-weight:500;width:100px;">Linjepris</th>
-            </tr></thead>
-            <tbody>${linjerHtml}</tbody>
-            <tfoot><tr>
-              <td colspan="3" style="padding:8px;text-align:right;font-weight:500;color:#666;">Subtotal ${lok.navn}:</td>
-              <td style="padding:8px;text-align:right;font-weight:600;">${fmtDKK(lokSub)}</td>
-            </tr></tfoot>
-          </table>
-        </div>`;
-      }).join("");
-
-      const moms = total * (config.momsprocent / 100);
-      const totalInkl = total + moms;
-
-      const html = `<!DOCTYPE html><html lang="da"><head><meta charset="UTF-8">
-        <title>Tilbud ${offer.meta.tilbudNr || ""}</title>
-        <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;color:#333;line-height:1.5;}@page{margin:20mm;}</style>
-      </head><body style="padding:40px;">
-        <header style="display:flex;justify-content:space-between;margin-bottom:32px;padding-bottom:24px;border-bottom:2px solid #111;">
-          <div>
-            <div style="width:180px;height:60px;background:#f0f9ff;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
-              <span style="color:#2563eb;font-weight:700;font-size:18px;">${config.firmanavn}</span>
-            </div>
-            <div style="font-size:12px;color:#666;">
-              <p>${config.adresse}</p><p>${config.postnrBy}</p>
-              <p>Tlf: ${config.telefon}</p><p>Email: ${config.email}</p><p>CVR: ${config.cvr}</p>
-            </div>
-          </div>
-          <div style="text-align:right;">
-            <h1 style="font-size:24px;font-weight:700;margin-bottom:8px;">TILBUD</h1>
-            ${offer.meta.tilbudNr ? `<p style="font-size:16px;font-weight:500;color:#2563eb;">#${offer.meta.tilbudNr}</p>` : ""}
-            <p style="font-size:12px;color:#666;margin-top:8px;">Dato: ${fmtDate(offer.meta.dato)}</p>
-            ${offer.meta.reference ? `<p style="font-size:12px;color:#666;">Reference: ${offer.meta.reference}</p>` : ""}
-          </div>
-        </header>
-        <section style="margin-bottom:32px;">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;">
-            <div>
-              <h2 style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Kunde</h2>
-              <p style="font-weight:500;">${offer.kunde.navn || "—"}</p>
-              <p>${offer.kunde.adresse || "—"}</p>
-              <p>${offer.kunde.telefon || ""}</p><p>${offer.kunde.email || ""}</p>
-            </div>
-            <div>
-              <h2 style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Projekt</h2>
-              <p style="font-weight:500;">${offer.meta.projektnavn || "—"}</p>
-            </div>
-          </div>
-        </section>
-        ${lokHtml}
-        <section style="margin-top:32px;padding-top:24px;border-top:2px solid #111;">
-          <div style="display:flex;justify-content:flex-end;">
-            <div style="width:250px;">
-              <div style="display:flex;justify-content:space-between;color:#666;margin-bottom:8px;">
-                <span>Subtotal (ekskl. moms):</span><span style="font-weight:500;">${fmtDKK(total)}</span>
-              </div>
-              ${offer.moms.visInkl ? `
-                <div style="display:flex;justify-content:space-between;color:#666;margin-bottom:8px;">
-                  <span>Moms (${config.momsprocent}%):</span><span>${fmtDKK(moms)}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding-top:8px;border-top:1px solid #ddd;">
-                  <span>Total inkl. moms:</span><span style="color:#2563eb;">${fmtDKK(totalInkl)}</span>
-                </div>` : `
-                <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding-top:8px;border-top:1px solid #ddd;">
-                  <span>Total ekskl. moms:</span><span style="color:#2563eb;">${fmtDKK(total)}</span>
-                </div>`}
-            </div>
-          </div>
-        </section>
-        ${offer.bemærkninger ? `<section style="margin-top:32px;padding:16px;background:#f9fafb;border-radius:8px;">
-          <h3 style="font-weight:600;margin-bottom:8px;">Bemærkninger</h3>
-          <p style="font-size:13px;color:#666;white-space:pre-wrap;">${offer.bemærkninger}</p>
-        </section>` : ""}
-        <footer style="margin-top:48px;padding-top:24px;border-top:1px solid #ddd;font-size:12px;color:#666;">
-          <p style="margin-bottom:16px;">${config.standardtekst}</p>
-          <p>${config.betalingsbetingelser}</p>
-        </footer>
-      </body></html>`;
-
+      const html = genererHtml(offer, products, config);
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="tilbud-${offer.meta.tilbudNr || "draft"}.html"`);
       res.send(html);

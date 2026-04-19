@@ -29,6 +29,7 @@ interface LokationEditorProps {
   products: Product[];
   lokationIndex: number;
   totalLokationer: number;
+  skabelon?: string;
   onChange: (lokation: Lokation) => void;
   onDelete: () => void;
   onMoveUp: () => void;
@@ -40,6 +41,7 @@ export function LokationEditor({
   products,
   lokationIndex,
   totalLokationer,
+  skabelon,
   onChange,
   onDelete,
   onMoveUp,
@@ -188,6 +190,17 @@ export function LokationEditor({
         
         <CollapsibleContent>
           <CardContent className="pt-0 px-4 pb-4">
+            {skabelon === "modul_overslag" && (
+              <div className="mb-4">
+                <textarea
+                  value={lokation.beskrivelse || ""}
+                  onChange={e => onChange({ ...lokation, beskrivelse: e.target.value })}
+                  placeholder="Kort beskrivelse af modulet (vises i tilbudsdokumentet)..."
+                  rows={2}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-muted-foreground"
+                />
+              </div>
+            )}
             <div className="space-y-3">
               {lokation.linjer.map((linje, index) => (
                 <LinjeEditor

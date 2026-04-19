@@ -26,6 +26,7 @@ export type Linje = z.infer<typeof linjeSchema>;
 
 export const lokationSchema = z.object({
   navn: z.string(),
+  beskrivelse: z.string().optional(),
   linjer: z.array(linjeSchema),
 });
 
@@ -55,8 +56,11 @@ export const momsSchema = z.object({
 
 export type Moms = z.infer<typeof momsSchema>;
 
+export type Skabelon = "standard" | "ev_erhverv" | "energi_privat" | "modul_overslag";
+
 export const offerSchema = z.object({
   id: z.string().optional(),
+  skabelon: z.enum(["standard", "ev_erhverv", "energi_privat", "modul_overslag"]).default("standard"),
   meta: metaSchema,
   kunde: kundeSchema,
   moms: momsSchema,

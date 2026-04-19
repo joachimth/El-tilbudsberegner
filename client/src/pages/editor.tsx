@@ -183,9 +183,20 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
           </Button>
 
           <div className="flex-1 min-w-0">
-            <h1 className="font-semibold truncate text-base" data-testid="text-offer-title">
-              {offer.meta.projektnavn || "Nyt tilbud"}
-            </h1>
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="font-semibold truncate text-base" data-testid="text-offer-title">
+                {offer.meta.projektnavn || "Nyt tilbud"}
+              </h1>
+              {offer.skabelon && offer.skabelon !== "standard" && (
+                <span className="hidden sm:inline-block text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
+                  {{
+                    ev_erhverv: "EV & Erhverv",
+                    energi_privat: "Energi",
+                    modul_overslag: "Modul",
+                  }[offer.skabelon]}
+                </span>
+              )}
+            </div>
             {offer.id && (
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Check className="w-3 h-3" />
@@ -394,6 +405,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
                   products={products}
                   lokationIndex={index}
                   totalLokationer={offer.lokationer.length}
+                  skabelon={offer.skabelon}
                   onChange={lok => handleLokationChange(index, lok)}
                   onDelete={() => handleDeleteLokation(index)}
                   onMoveUp={() => handleMoveLokation(index, "up")}
