@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Zap, Leaf, Grid3X3, FileText } from "lucide-react";
+import { ArrowLeft, Zap, Leaf, Grid3X3, FileText, Star } from "lucide-react";
 import type { Skabelon } from "@shared/schema";
 
 interface TemplateSelectorProps {
@@ -15,7 +15,19 @@ const SKABELONER: {
   tagline: string;
   beskrivelse: string;
   tags: string[];
+  nyhed?: boolean;
 }[] = [
+  {
+    id: "ev_erhverv_v2",
+    icon: Zap,
+    farve: "bg-[#1f4d6b]",
+    navn: "EV & Erhverv V2",
+    tagline: "Professionelt lækker — PDF-klar",
+    beskrivelse:
+      "Fuldt designet premium-skabelon med hero-sektion, fordelskort, løsningskort med billeder, smart prisoversigt og CTA-blok. Optimeret til PDF-eksport.",
+    tags: ["EV-lader", "Erhverv", "Billeder", "PDF", "Premium"],
+    nyhed: true,
+  },
   {
     id: "ev_erhverv",
     icon: Zap,
@@ -90,7 +102,7 @@ export default function TemplateSelector({ onSelect }: TemplateSelectorProps) {
               <button
                 key={s.id}
                 onClick={() => onSelect(s.id)}
-                className="group text-left border rounded-xl overflow-hidden bg-card hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={`group text-left border rounded-xl overflow-hidden bg-card hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${s.nyhed ? "ring-2 ring-[#1f4d6b]/30" : ""}`}
               >
                 {/* Farvet top-band */}
                 <div className={`${s.farve} h-2`} />
@@ -101,7 +113,15 @@ export default function TemplateSelector({ onSelect }: TemplateSelectorProps) {
                       <Icon className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-lg leading-tight">{s.navn}</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-lg leading-tight">{s.navn}</span>
+                        {s.nyhed && (
+                          <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded-full bg-[#1f4d6b] text-white font-medium">
+                            <Star className="w-3 h-3" />
+                            Ny
+                          </span>
+                        )}
+                      </div>
                       <div className="text-sm text-muted-foreground mt-0.5">{s.tagline}</div>
                     </div>
                   </div>
