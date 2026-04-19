@@ -1,6 +1,12 @@
-import { chromium } from "playwright";
-
 export async function htmlToPdf(html: string): Promise<Buffer> {
+  let chromium: any;
+  try {
+    const playwright = await import("playwright");
+    chromium = playwright.chromium;
+  } catch {
+    throw new Error("PDF-eksport kræver playwright, som ikke er installeret på denne server.");
+  }
+
   const browser = await chromium.launch({
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
   });
