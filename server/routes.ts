@@ -85,7 +85,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(400).json({ error: "Ugyldigt tilbud", details: parseResult.error.errors });
       }
       const id = await storage.saveOffer(parseResult.data, req.user!.id);
-      res.status(201).json({ id });
+      const saved = await storage.getOffer(id);
+      res.status(201).json(saved);
+    } catch {
+      res.status(500).json({ error: "Kunne ikke gemme tilbud" });
+    }
+  });
+
+  app.put("/api/offers/:id", requireAuth, async (req, res) => {
+    try {
+      const existing = await storage.getOffer(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Tilbud ikke fundet" });
+      const parseResult = offerSchema.safeParse({ ...req.body, id: req.params.id });
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Ugyldigt tilbud", details: parseResult.error.errors });
+      }
+      await storage.saveOffer(parseResult.data, req.user!.id);
+      const saved = await storage.getOffer(req.params.id);
+      res.json(saved);
     } catch {
       res.status(500).json({ error: "Kunne ikke gemme tilbud" });
     }
