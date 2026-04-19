@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Plus, Eye, Download, Menu, X, MapPin, User, Calculator, Save, LogOut, Settings, Cloud, CloudCheck } from "lucide-react";
+import { ArrowLeft, Plus, Eye, Download, Menu, X, MapPin, User, Calculator, Save, LogOut, Settings, Cloud, Check } from "lucide-react";
 import { KundeInfoForm } from "@/components/kunde-info-form";
 import { LokationEditor } from "@/components/lokation-editor";
 import { SummaryPanel } from "@/components/summary-panel";
@@ -191,7 +191,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
             </h1>
             {offer.id && (
               <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <CloudCheck className="w-3 h-3" />
+                <Check className="w-3 h-3" />
                 Gemt til server
               </p>
             )}
