@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import passport from "passport";
+import multer from "multer";
 import { storage } from "./storage";
 import { requireAuth, requireAdmin, hashPassword } from "./auth";
 import { offerSchema } from "@shared/schema";
@@ -392,6 +393,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     arbejdstidMinutter: z.number().min(0).nullable().optional(),
     beskrivelse: z.string().nullable().optional(),
     forbehold: z.string().nullable().optional(),
+    tags: z.array(z.string()).nullable().optional(),
     aktiv: z.boolean().default(true),
     sortering: z.number().default(0),
   });
@@ -425,6 +427,37 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Kunne ikke slette produkt" });
+    }
+  });
+
+  // ── Admin: Firmalogo ─────────────────────────────────────────────────
+
+  const logoUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype.startsWith("image/")) cb(null, true);
+      else cb(new Error("Kun billedfiler er tilladt"));
+    },
+  });
+
+  app.post("/api/admin/logo", requireAdmin, logoUpload.single("logo"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Ingen fil modtaget" });
+      const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+      await storage.updateSetting("firmalogo", base64);
+      res.json({ ok: true, logo: base64 });
+    } catch {
+      res.status(500).json({ error: "Kunne ikke gemme logo" });
+    }
+  });
+
+  app.delete("/api/admin/logo", requireAdmin, async (_req, res) => {
+    try {
+      await storage.updateSetting("firmalogo", "");
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Kunne ikke fjerne logo" });
     }
   });
 
