@@ -1,15 +1,20 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import MemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupPassport } from "./auth";
 import { initDatabase } from "./db-init";
+import { pool } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Trust Replit's reverse proxy so req.secure reflects HTTPS correctly,
+// which is required for session cookies with secure:true to be sent.
+app.set("trust proxy", 1);
 
 declare module "http" {
   interface IncomingMessage {
@@ -26,18 +31,21 @@ app.use(
 );
 app.use(express.urlencoded({ extended: false }));
 
-// Sessions med MemoryStore (ryddes ved server-genstart)
-const MemoryStoreSession = MemoryStore(session);
+const PgStore = connectPgSimple(session);
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "el-tilbud-secret-skift-i-produktion",
     resave: false,
     saveUninitialized: false,
-    store: new MemoryStoreSession({ checkPeriod: 86400000 }),
+    store: new PgStore({
+      pool,
+      tableName: "sessioner",
+      createTableIfMissing: true,
+    }),
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dage
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   })
 );
@@ -82,7 +90,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialiser DB-tabeller og seed-data
   try {
     await initDatabase();
     log("Database initialiseret", "db");
