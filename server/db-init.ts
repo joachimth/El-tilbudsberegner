@@ -6,6 +6,19 @@ import { join } from "path";
 export async function initDatabase(): Promise<void> {
   const client = await pool.connect();
   try {
+    // Session-tabel til connect-pg-simple (createTableIfMissing virker ikke i bundlet kode)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sessioner (
+        sid VARCHAR NOT NULL COLLATE "default",
+        sess JSON NOT NULL,
+        expire TIMESTAMP(6) NOT NULL,
+        CONSTRAINT session_pkey PRIMARY KEY (sid) NOT DEFERRABLE INITIALLY IMMEDIATE
+      )
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_session_expire ON sessioner (expire)
+    `);
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS brugere (
         id SERIAL PRIMARY KEY,
