@@ -512,11 +512,16 @@ export function renderEvErhvervV2(
   const forbeholdLinjer = offer.bemærkninger
     ? offer.bemærkninger.split("\n").filter(l => l.trim())
     : [];
-  const forbeholdHtml = forbeholdLinjer.length > 0 ? `<div class="section">
+  const standardForbeholdLinjer = config.standardforbehold
+    ? config.standardforbehold.split("\n").filter(l => l.trim())
+    : [];
+  const forbeholdHtml = (forbeholdLinjer.length > 0 || standardForbeholdLinjer.length > 0) ? `<div class="section">
     <div class="section-h2">Generelle forbehold</div>
     <div class="forbehold-boks">
-      <div class="forbehold-header">Bemærkninger og forbehold</div>
-      <ul>${forbeholdLinjer.map(l => `<li>${esc(l.replace(/^[-•]\s*/, ""))}</li>`).join("")}</ul>
+      ${forbeholdLinjer.length > 0 ? `<div class="forbehold-header">Tilbudsspecifikke bemærkninger</div>
+      <ul>${forbeholdLinjer.map(l => `<li>${esc(l.replace(/^[-•]\s*/, ""))}</li>`).join("")}</ul>` : ""}
+      ${standardForbeholdLinjer.length > 0 ? `<div class="forbehold-header" style="margin-top:${forbeholdLinjer.length > 0 ? "10px" : "0"}">Standardforbehold</div>
+      <ul>${standardForbeholdLinjer.map(l => `<li>${esc(l.replace(/^[-•]\s*/, ""))}</li>`).join("")}</ul>` : ""}
     </div>
   </div>` : "";
 

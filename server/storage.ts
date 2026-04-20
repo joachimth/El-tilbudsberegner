@@ -78,6 +78,7 @@ export class DbStorage {
       momsprocent: parseInt(m.momsprocent || "25"),
       standardtekst: m.standardtekst || "",
       betalingsbetingelser: m.betalingsbetingelser || "",
+      standardforbehold: m.standardforbehold || "",
     };
   }
 

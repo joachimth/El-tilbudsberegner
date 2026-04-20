@@ -466,6 +466,15 @@ function IndstillingerTab() {
             <Textarea value={s.betalingsbetingelser || ""} onChange={e => set("betalingsbetingelser", e.target.value)}
               rows={2} className="mt-2 text-base resize-none" />
           </div>
+          <div>
+            <Label>Standardforbehold</Label>
+            <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+              Disse forbehold vises automatisk på alle tilbud, adskilt fra tilbudsspecifikke bemærkninger. Én per linje.
+            </p>
+            <Textarea value={s.standardforbehold || ""} onChange={e => set("standardforbehold", e.target.value)}
+              rows={4} className="mt-1 text-base resize-none"
+              placeholder={"Alle priser er ekskl. moms og afgifter\nPriserne er gældende i 30 dage fra tilbudsdato"} />
+          </div>
         </CardContent>
       </Card>
 
