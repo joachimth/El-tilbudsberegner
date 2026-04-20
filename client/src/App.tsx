@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -31,20 +31,6 @@ function Router() {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
-
-  // Redirect to login when any API call returns 401 (session expired after server restart)
-  useEffect(() => {
-    const unsubscribe = queryClient.getQueryCache().subscribe(event => {
-      if (event.type === "updated" && event.query.state.status === "error") {
-        const err = event.query.state.error;
-        if (err instanceof Error && err.message.startsWith("401:")) {
-          queryClient.setQueryData(["/api/auth/me"], null);
-          navigate("/login");
-        }
-      }
-    });
-    return unsubscribe;
-  }, [navigate]);
 
   const handleLoadOffer = useCallback((offer: Offer) => {
     setCurrentOffer(offer);
