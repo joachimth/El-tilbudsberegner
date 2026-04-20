@@ -97,6 +97,24 @@ export function createEmptyLokation(navn: string = "Ny lokation"): Lokation {
   };
 }
 
+export function collectProduktForbehold(owt: OfferWithTotals): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const lok of owt.lokationerWithTotals) {
+    for (const l of lok.linjerWithProducts) {
+      if (!l.product.forbehold) continue;
+      for (const line of l.product.forbehold.split("\n")) {
+        const trimmed = line.replace(/^[-•]\s*/, "").trim();
+        if (trimmed && !seen.has(trimmed)) {
+          seen.add(trimmed);
+          result.push(trimmed);
+        }
+      }
+    }
+  }
+  return result;
+}
+
 export function groupProductsByCategory(products: Product[]): Map<string, Product[]> {
   const grouped = new Map<string, Product[]>();
   

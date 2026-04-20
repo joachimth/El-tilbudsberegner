@@ -37,6 +37,7 @@ export const produkter = pgTable("produkter", {
   avanceProcent: real("avance_procent"),
   arbejdstidMinutter: real("arbejdstid_minutter"),
   beskrivelse: text("beskrivelse"),
+  forbehold: text("forbehold"),
   aktiv: boolean("aktiv").default(true).notNull(),
   sortering: integer("sortering").default(0),
 });

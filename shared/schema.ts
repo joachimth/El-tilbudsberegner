@@ -11,6 +11,7 @@ export const productSchema = z.object({
   avanceProcent: z.number().optional(),
   arbejdstidMinutter: z.number().optional(),
   beskrivelse: z.string().optional(),
+  forbehold: z.string().optional(),
   ean: z.string().optional(),
   internVarenr: z.string().optional(),
 });

@@ -59,6 +59,10 @@ export async function initDatabase(): Promise<void> {
     `);
 
     await client.query(`
+      ALTER TABLE produkter ADD COLUMN IF NOT EXISTS forbehold TEXT
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS indstillinger (
         nøgle TEXT PRIMARY KEY,
         værdi TEXT NOT NULL
