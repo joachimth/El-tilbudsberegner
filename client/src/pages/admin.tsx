@@ -243,6 +243,7 @@ function ProdukterTab({ timepris }: { timepris: number }) {
     queryKey: ["/api/admin/products"],
     queryFn: async () => {
       const res = await fetch("/api/admin/products", { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
       return res.json();
     },
   });
@@ -375,6 +376,7 @@ function IndstillingerTab() {
     queryKey: ["/api/admin/settings"],
     queryFn: async () => {
       const res = await fetch("/api/admin/settings", { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
       return res.json();
     },
   });
@@ -488,6 +490,7 @@ function BrugereTab({ currentUser }: { currentUser: CurrentUser }) {
     queryKey: ["/api/admin/users"],
     queryFn: async () => {
       const res = await fetch("/api/admin/users", { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
       return res.json();
     },
   });
@@ -622,6 +625,7 @@ export default function AdminPage({ currentUser }: AdminPageProps) {
     queryKey: ["/api/admin/settings"],
     queryFn: async () => {
       const res = await fetch("/api/admin/settings", { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
       return res.json();
     },
   });
