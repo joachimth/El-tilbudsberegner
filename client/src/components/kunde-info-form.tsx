@@ -3,8 +3,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, FileText, MessageSquare, Percent } from "lucide-react";
-import type { Kunde, Meta, Moms } from "@/lib/types";
+import { User, FileText, MessageSquare, Percent, PlusCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import type { Kunde, Meta, Moms, Config } from "@/lib/types";
 
 interface KundeInfoFormProps {
   kunde: Kunde;
@@ -30,6 +31,17 @@ export function KundeInfoForm({
   testIdPrefix = "",
 }: KundeInfoFormProps) {
   const tid = (id: string) => testIdPrefix ? `${testIdPrefix}-${id}` : id;
+
+  const { data: config } = useQuery<Config>({ queryKey: ["/api/config"] });
+  const forslag = config?.standardforbehold
+    ? config.standardforbehold.split("\n").map(l => l.replace(/^[-•]\s*/, "").trim()).filter(Boolean)
+    : [];
+
+  const tilføjForbehold = (linje: string) => {
+    const allerede = bemærkninger.split("\n").some(l => l.trim() === linje);
+    if (allerede) return;
+    onBemærkningerChange(bemærkninger ? `${bemærkninger}\n${linje}` : linje);
+  };
 
   return (
     <div className="space-y-4">
@@ -179,7 +191,7 @@ export function KundeInfoForm({
             Bemærkninger
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <Textarea
             value={bemærkninger}
             onChange={e => onBemærkningerChange(e.target.value)}
@@ -188,6 +200,34 @@ export function KundeInfoForm({
             className="resize-none text-base"
             data-testid={tid("textarea-bemærkninger")}
           />
+          {forslag.length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                <PlusCircle className="w-3 h-3" />
+                Tilføj standardforbehold
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {forslag.map((linje, i) => {
+                  const aktiv = bemærkninger.split("\n").some(l => l.trim() === linje);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => tilføjForbehold(linje)}
+                      disabled={aktiv}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                        aktiv
+                          ? "border-green-300 bg-green-50 text-green-700 cursor-default"
+                          : "border-border bg-muted hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                      }`}
+                    >
+                      {aktiv ? "✓ " : "+ "}{linje}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
