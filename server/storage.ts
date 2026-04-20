@@ -81,6 +81,7 @@ export class DbStorage {
       standardtekst: m.standardtekst || "",
       betalingsbetingelser: m.betalingsbetingelser || "",
       standardforbehold: m.standardforbehold || "",
+      firmalogo: m.firmalogo || "",
     };
   }
 

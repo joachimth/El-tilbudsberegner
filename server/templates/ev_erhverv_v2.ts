@@ -380,7 +380,10 @@ export function renderEvErhvervV2(
   // ── Sections ─────────────────────────────────────────────────────────────────
 
   const headerBand = `<div class="header-band">
-    <div class="header-band-firma">${esc(config.firmanavn)}</div>
+    <div class="header-band-firma">${config.firmalogo
+      ? `<img src="${config.firmalogo}" alt="Logo" style="max-height:28px;max-width:120px;object-fit:contain;vertical-align:middle;filter:brightness(0) invert(1);">`
+      : esc(config.firmanavn)
+    }</div>
     <div class="header-band-contact">${[
       config.telefon && `Tlf. ${esc(config.telefon)}`,
       config.email && esc(config.email),
@@ -389,7 +392,10 @@ export function renderEvErhvervV2(
 
   const docHoved = `<div class="doc-hoved">
     <div>
-      <div class="firma-navn">${esc(config.firmanavn)}</div>
+      ${config.firmalogo
+        ? `<img src="${config.firmalogo}" alt="Firmalogo" style="max-height:48px;max-width:160px;object-fit:contain;margin-bottom:8px;display:block;">`
+        : `<div class="firma-navn">${esc(config.firmanavn)}</div>`
+      }
       <div class="firma-info">
         ${[config.adresse, config.postnrBy, config.cvr && `CVR: ${esc(config.cvr)}`]
           .filter(Boolean).map(esc).join("<br>")}

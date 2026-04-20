@@ -34,7 +34,10 @@ function DocHoved({ offer, config }: { offer: Offer; config: Config }) {
   return (
     <div className="flex flex-col sm:flex-row justify-between gap-6 mb-8 pb-6 border-b-2 border-gray-900">
       <div>
-        <div className="font-bold text-xl text-[#1f4d6b] mb-2">{config.firmanavn}</div>
+        {config.firmalogo
+          ? <img src={config.firmalogo} alt="Firmalogo" className="max-h-14 max-w-[180px] object-contain mb-3 print:max-h-12" />
+          : <div className="font-bold text-xl text-[#1f4d6b] mb-2">{config.firmanavn}</div>
+        }
         <div className="text-sm text-gray-500 leading-relaxed">
           {config.adresse && <div>{config.adresse}</div>}
           {config.postnrBy && <div>{config.postnrBy}</div>}

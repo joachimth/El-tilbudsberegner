@@ -128,6 +128,7 @@ export const configSchema = z.object({
   standardtekst: z.string(),
   betalingsbetingelser: z.string(),
   standardforbehold: z.string().default(""),
+  firmalogo: z.string().default(""),
 });
 
 export type Config = z.infer<typeof configSchema>;
