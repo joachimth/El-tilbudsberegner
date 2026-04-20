@@ -75,8 +75,8 @@ export function LinjeEditor({
       </div>
       
       {/* Quantity and price row */}
-      <div className="flex items-center gap-4">
-        {/* Quantity stepper - Apple style */}
+      <div className="flex items-center gap-3">
+        {/* Quantity stepper */}
         <div className="flex items-center gap-1 bg-background rounded-lg border p-1">
           <Button
             variant="ghost"
@@ -102,17 +102,15 @@ export function LinjeEditor({
             <Plus className="w-4 h-4" />
           </Button>
         </div>
-        
-        {/* Price info */}
-        <div className="flex-1 flex items-center justify-end gap-4">
+
+        {/* Price info — stacked to avoid clipping on narrow screens */}
+        <div className="flex-1 flex justify-end">
           <div className="text-right">
-            <div className="text-sm text-muted-foreground" data-testid="text-enhedspris">
-              {formatDKK(enhedspris)}/{product?.enhed || "stk"}
-            </div>
-          </div>
-          <div className="text-right min-w-[80px]">
-            <div className="text-lg font-semibold" data-testid="text-linjepris">
+            <div className="text-lg font-semibold whitespace-nowrap" data-testid="text-linjepris">
               {formatDKK(linjepris)}
+            </div>
+            <div className="text-xs text-muted-foreground whitespace-nowrap" data-testid="text-enhedspris">
+              {formatDKK(enhedspris)}/{product?.enhed || "stk"}
             </div>
           </div>
         </div>
