@@ -266,7 +266,7 @@ function ProdukterTab({ timepris }: { timepris: number }) {
     p.kategori.toLowerCase().includes(søgning.toLowerCase())
   );
 
-  const kategorier = [...new Set(products.map(p => p.kategori))].sort();
+  const kategorier = Array.from(new Set(products.map(p => p.kategori))).sort();
 
   return (
     <div className="space-y-4">
