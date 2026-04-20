@@ -431,6 +431,96 @@ function ProdukterTab({ timepris }: { timepris: number }) {
   );
 }
 
+// ── Skabelon-kategorier kort ───────────────────────────────────────────────────
+
+const SKABELONER: { id: string; navn: string }[] = [
+  { id: "standard", navn: "Standard" },
+  { id: "ev_erhverv", navn: "EV Erhverv" },
+  { id: "energi_privat", navn: "Energi Privat" },
+  { id: "modul_overslag", navn: "Modul Overslag" },
+  { id: "ev_erhverv_v2", navn: "EV Erhverv V2" },
+];
+
+function SkabelonKategorierCard({
+  settings,
+  onSet,
+}: {
+  settings: Record<string, string>;
+  onSet: (k: string, v: string) => void;
+}) {
+  const { data: products = [] } = useQuery<AdminProduct[]>({
+    queryKey: ["/api/admin/products"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/products", { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}`);
+      return res.json();
+    },
+  });
+
+  const kategorier = Array.from(new Set(products.map(p => p.kategori))).sort();
+
+  const katMap: Record<string, string[]> = (() => {
+    try { return JSON.parse(settings.skabelonKategorier || "{}"); } catch { return {}; }
+  })();
+
+  const toggle = (skabelonId: string, kat: string) => {
+    const nuværende = katMap[skabelonId] || [];
+    const opdateret = nuværende.includes(kat)
+      ? nuværende.filter(k => k !== kat)
+      : [...nuværende, kat];
+    onSet("skabelonKategorier", JSON.stringify({ ...katMap, [skabelonId]: opdateret }));
+  };
+
+  if (!kategorier.length) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Package className="w-4 h-4" />
+          Skabelon-specifikke kategorier
+        </CardTitle>
+        <p className="text-xs text-muted-foreground mt-1">
+          Vælg hvilke produktkategorier der præ-filtreres i editoren for hver skabelon.
+          Montøren kan altid søge i alle kategorier.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {SKABELONER.map(({ id, navn }) => {
+          const valgte = katMap[id] || [];
+          return (
+            <div key={id}>
+              <p className="text-sm font-medium mb-2">{navn}</p>
+              <div className="flex flex-wrap gap-2">
+                {kategorier.map(kat => {
+                  const aktiv = valgte.includes(kat);
+                  return (
+                    <button
+                      key={kat}
+                      type="button"
+                      onClick={() => toggle(id, kat)}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                        aktiv
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted text-muted-foreground border-border hover:border-primary/50"
+                      }`}
+                    >
+                      {kat}
+                    </button>
+                  );
+                })}
+              </div>
+              {valgte.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Alle kategorier vises (ingen filter)</p>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Indstillinger-tab ──────────────────────────────────────────────────────────
 
 function IndstillingerTab() {
@@ -590,6 +680,9 @@ function IndstillingerTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Skabelon-specifikke kategorier */}
+      <SkabelonKategorierCard settings={s} onSet={set} />
 
       <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="w-full h-12">
         <Save className="w-4 h-4 mr-2" />

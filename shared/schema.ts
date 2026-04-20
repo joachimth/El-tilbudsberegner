@@ -130,6 +130,7 @@ export const configSchema = z.object({
   betalingsbetingelser: z.string(),
   standardforbehold: z.string().default(""),
   firmalogo: z.string().default(""),
+  skabelonKategorier: z.record(z.string(), z.array(z.string())).default({}),
 });
 
 export type Config = z.infer<typeof configSchema>;

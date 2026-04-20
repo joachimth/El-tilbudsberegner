@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Plus, Trash2, MapPin, MoreVertical } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Trash2, MapPin, MoreVertical, ListFilter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -30,6 +30,7 @@ interface LokationEditorProps {
   lokationIndex: number;
   totalLokationer: number;
   skabelon?: string;
+  kategoriFilter?: string[];
   onChange: (lokation: Lokation) => void;
   onDelete: () => void;
   onMoveUp: () => void;
@@ -42,6 +43,7 @@ export function LokationEditor({
   lokationIndex,
   totalLokationer,
   skabelon,
+  kategoriFilter = [],
   onChange,
   onDelete,
   onMoveUp,
@@ -49,6 +51,12 @@ export function LokationEditor({
 }: LokationEditorProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [visAlle, setVisAlle] = useState(false);
+
+  const filterAktiv = kategoriFilter.length > 0;
+  const visibleProducts = filterAktiv && !visAlle
+    ? products.filter(p => kategoriFilter.includes(p.kategori))
+    : products;
 
   const subtotal = lokation.linjer.reduce((sum, linje) => {
     const product = products.find(p => p.id === linje.productId);
@@ -60,9 +68,8 @@ export function LokationEditor({
   };
 
   const handleAddLinje = () => {
-    const firstProduct = products[0];
+    const firstProduct = visibleProducts[0] ?? products[0];
     if (!firstProduct) return;
-    
     onChange({
       ...lokation,
       linjer: [...lokation.linjer, { productId: firstProduct.id, antal: 1 }]
@@ -201,13 +208,26 @@ export function LokationEditor({
                 />
               </div>
             )}
+            {filterAktiv && (
+              <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+                <ListFilter className="w-3.5 h-3.5 shrink-0" />
+                <span>Filtreret til: {kategoriFilter.join(", ")}</span>
+                <button
+                  type="button"
+                  onClick={() => setVisAlle(v => !v)}
+                  className="ml-auto underline underline-offset-2 hover:text-foreground transition-colors"
+                >
+                  {visAlle ? "Vis filtreret" : "Vis alle kategorier"}
+                </button>
+              </div>
+            )}
             <div className="space-y-3">
               {lokation.linjer.map((linje, index) => (
                 <LinjeEditor
                   key={index}
                   productId={linje.productId}
                   antal={linje.antal}
-                  products={products}
+                  products={visibleProducts}
                   onProductChange={productId => handleLinjeChange(index, { productId })}
                   onAntalChange={antal => handleLinjeChange(index, { antal })}
                   onDelete={() => handleDeleteLinje(index)}

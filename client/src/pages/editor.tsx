@@ -407,6 +407,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
                   lokationIndex={index}
                   totalLokationer={offer.lokationer.length}
                   skabelon={offer.skabelon}
+                  kategoriFilter={config?.skabelonKategorier?.[offer.skabelon] ?? []}
                   onChange={lok => handleLokationChange(index, lok)}
                   onDelete={() => handleDeleteLokation(index)}
                   onMoveUp={() => handleMoveLokation(index, "up")}
