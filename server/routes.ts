@@ -279,7 +279,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/offers/:id", requireAuth, async (req, res) => {
     try {
-      const offer = await storage.getOffer(req.params.id);
+      const offer = await storage.getOffer(String(req.params.id));
       if (!offer) return res.status(404).json({ error: "Tilbud ikke fundet" });
       res.json(offer);
     } catch {
@@ -303,14 +303,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.put("/api/offers/:id", requireAuth, async (req, res) => {
     try {
-      const existing = await storage.getOffer(req.params.id);
+      const id = String(req.params.id);
+      const existing = await storage.getOffer(id);
       if (!existing) return res.status(404).json({ error: "Tilbud ikke fundet" });
-      const parseResult = offerSchema.safeParse({ ...req.body, id: req.params.id });
+      const parseResult = offerSchema.safeParse({ ...req.body, id });
       if (!parseResult.success) {
         return res.status(400).json({ error: "Ugyldigt tilbud", details: parseResult.error.errors });
       }
       await storage.saveOffer(parseResult.data, req.user!.id);
-      const saved = await storage.getOffer(req.params.id);
+      const saved = await storage.getOffer(id);
       res.json(saved);
     } catch {
       res.status(500).json({ error: "Kunne ikke gemme tilbud" });
@@ -319,7 +320,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/offers/:id", requireAuth, async (req, res) => {
     try {
-      await storage.deleteOffer(req.params.id);
+      await storage.deleteOffer(String(req.params.id));
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Kunne ikke slette tilbud" });
@@ -410,7 +411,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const parsed = adminProductSchema.partial().safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Ugyldige data", details: parsed.error.errors });
-      await storage.updateProduct(req.params.id, parsed.data as any);
+      await storage.updateProduct(String(req.params.id), parsed.data as any);
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Kunne ikke opdatere produkt" });
@@ -419,7 +420,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/admin/products/:id", requireAdmin, async (req, res) => {
     try {
-      await storage.deleteProduct(req.params.id);
+      await storage.deleteProduct(String(req.params.id));
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Kunne ikke slette produkt" });
@@ -476,7 +477,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       if (id === req.user!.id) return res.status(400).json({ error: "Du kan ikke slette dig selv" });
       await storage.deleteUser(id);
       res.json({ ok: true });

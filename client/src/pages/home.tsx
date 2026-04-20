@@ -87,7 +87,7 @@ export default function Home({ currentUser, onLoadOffer, onNewOffer }: HomeProps
     e.target.value = "";
   };
 
-  const handleOpenOffer = async (id: number) => {
+  const handleOpenOffer = async (id: string) => {
     try {
       const res = await fetch(`/api/offers/${id}`, { credentials: "include" });
       if (!res.ok) throw new Error("Kunne ikke hente tilbud");
@@ -103,7 +103,7 @@ export default function Home({ currentUser, onLoadOffer, onNewOffer }: HomeProps
     }
   };
 
-  const handleDeleteOffer = async (id: number, titel: string) => {
+  const handleDeleteOffer = async (id: string, titel: string) => {
     try {
       const res = await fetch(`/api/offers/${id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Sletning fejlede");
