@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,7 @@ interface AdminProduct {
   arbejdstidMinutter?: number | null;
   beskrivelse?: string | null;
   forbehold?: string | null;
+  tags?: string[] | null;
   aktiv: boolean;
   sortering: number;
 }
@@ -67,6 +68,7 @@ const emptyProduct = (): Partial<AdminProduct> => ({
   arbejdstidMinutter: undefined,
   beskrivelse: "",
   forbehold: "",
+  tags: [],
   aktiv: true,
   sortering: 0,
 });
@@ -116,6 +118,20 @@ function ProduktDialog({
 
   const set = (k: keyof AdminProduct, v: any) => setForm(f => ({ ...f, [k]: v }));
   const num = (v: string) => v === "" ? undefined : parseFloat(v);
+
+  const [tagInput, setTagInput] = useState("");
+  const alleTags = Array.from(new Set(kategorier)).sort(); // reused as tag suggestions via existing products
+
+  const tilføjTag = (tag: string) => {
+    const t = tag.trim().toLowerCase().replace(/\s+/g, "-");
+    if (!t) return;
+    const nuværende = form.tags || [];
+    if (!nuværende.includes(t)) set("tags", [...nuværende, t]);
+    setTagInput("");
+  };
+
+  const fjernTag = (tag: string) =>
+    set("tags", (form.tags || []).filter(t => t !== tag));
 
   const kalkuleret = beregnKalkuleret(form, timepris);
 
@@ -224,6 +240,40 @@ function ProduktDialog({
               placeholder={"Kræver godkendt tavle\nBygherre ansvarlig for gravearbejde"} />
           </div>
 
+          {/* Tags */}
+          <div>
+            <Label>Tags</Label>
+            <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+              Bruges til filtrering og skabelon-specifikke kategorier. Tryk Enter for at tilføje.
+            </p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {(form.tags || []).map(tag => (
+                <span key={tag} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
+                  {tag}
+                  <button type="button" onClick={() => fjernTag(tag)} className="hover:text-destructive leading-none">×</button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                list="tag-forslag"
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" || e.key === ",") { e.preventDefault(); tilføjTag(tagInput); }
+                }}
+                placeholder="fx ev-lader, vvs, smart-home…"
+                className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <datalist id="tag-forslag">
+                {alleTags.map(t => <option key={t} value={t} />)}
+              </datalist>
+              <Button type="button" variant="outline" size="sm" onClick={() => tilføjTag(tagInput)}>
+                Tilføj
+              </Button>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between py-1">
             <Label className="cursor-pointer">Aktiv (vises i produktliste)</Label>
             <Switch checked={form.aktiv !== false} onCheckedChange={v => set("aktiv", v)} />
@@ -316,6 +366,9 @@ function ProdukterTab({ timepris }: { timepris: number }) {
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-sm">{p.navn}</span>
                             {!p.aktiv && <Badge variant="secondary" className="text-xs">Inaktiv</Badge>}
+                            {(p.tags || []).map(tag => (
+                              <Badge key={tag} variant="outline" className="text-xs font-normal">{tag}</Badge>
+                            ))}
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                             <span>{formatDKK(p.pris_1)} / {formatDKK(p.pris_2plus)} (2+) pr. {p.enhed}</span>

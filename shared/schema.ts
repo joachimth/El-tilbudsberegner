@@ -12,6 +12,7 @@ export const productSchema = z.object({
   arbejdstidMinutter: z.number().optional(),
   beskrivelse: z.string().optional(),
   forbehold: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   ean: z.string().optional(),
   internVarenr: z.string().optional(),
 });
