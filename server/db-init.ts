@@ -111,6 +111,7 @@ export async function initDatabase(): Promise<void> {
         momsprocent: String(config.momsprocent || 25),
         standardtekst: config.standardtekst || "Alle priser er ekskl. moms.",
         betalingsbetingelser: config.betalingsbetingelser || "Betaling netto 8 dage.",
+        standardforbehold: config.standardforbehold || "",
         timepris: "595",
       };
       for (const [key, value] of Object.entries(defaults)) {

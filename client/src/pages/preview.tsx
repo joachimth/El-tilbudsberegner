@@ -75,6 +75,18 @@ function ForbeholdBoks({ lines }: { lines: string[] }) {
   );
 }
 
+function StandardForbeholdBoks({ config }: { config: Config }) {
+  if (!config.standardforbehold) return null;
+  const lines = bulletLines(config.standardforbehold);
+  if (!lines.length) return null;
+  return (
+    <section className="mb-8">
+      <h2 className="text-lg font-semibold mb-3">Generelle forbehold</h2>
+      <ForbeholdBoks lines={lines} />
+    </section>
+  );
+}
+
 function GodBoks({ lines }: { lines: string[] }) {
   if (!lines.length) return null;
   return (
@@ -151,10 +163,12 @@ function PreviewEvErhverv({ owt, config }: { owt: OfferWithTotals; config: Confi
         {/* Forbehold */}
         {forbehold.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-lg font-semibold mb-3">Generelle forbehold</h2>
+            <h2 className="text-lg font-semibold mb-3">Tilbudsspecifikke forbehold</h2>
             <ForbeholdBoks lines={forbehold} />
           </section>
         )}
+
+        <StandardForbeholdBoks config={config} />
 
         <footer className="mt-10 pt-6 border-t text-sm text-gray-400">
           {config.standardtekst && <p className="mb-2">{config.standardtekst}</p>}
@@ -218,6 +232,8 @@ function PreviewEnergiPrivat({ owt, config }: { owt: OfferWithTotals; config: Co
             <ForbeholdBoks lines={noterLinjer} />
           </section>
         )}
+
+        <StandardForbeholdBoks config={config} />
 
         {/* Samlet pris */}
         <section className="mb-8">
@@ -322,6 +338,8 @@ function PreviewModulOverslag({ owt, config }: { owt: OfferWithTotals; config: C
           />
         </section>
 
+        <StandardForbeholdBoks config={config} />
+
         <footer className="mt-10 pt-6 border-t text-sm text-gray-400">
           {config.standardtekst && <p className="mb-2">{config.standardtekst}</p>}
           {config.betalingsbetingelser && <p>{config.betalingsbetingelser}</p>}
@@ -419,6 +437,12 @@ function PreviewStandard({ owt, config }: { owt: OfferWithTotals; config: Config
           <section className="mt-8 p-4 bg-gray-50 rounded-lg">
             <h3 className="font-semibold text-gray-900 mb-2">Bemærkninger</h3>
             <p className="text-sm text-gray-600 whitespace-pre-wrap">{offer.bemærkninger}</p>
+          </section>
+        )}
+
+        {config.standardforbehold && (
+          <section className="mt-4">
+            <StandardForbeholdBoks config={config} />
           </section>
         )}
 

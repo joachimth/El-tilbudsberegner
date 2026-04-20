@@ -126,6 +126,7 @@ export const configSchema = z.object({
   momsprocent: z.number().default(25),
   standardtekst: z.string(),
   betalingsbetingelser: z.string(),
+  standardforbehold: z.string().default(""),
 });
 
 export type Config = z.infer<typeof configSchema>;
