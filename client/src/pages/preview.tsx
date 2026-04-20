@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, FileText, Printer, FileDown } from "lucide-react";
+import { ArrowLeft, FileText, Printer } from "lucide-react";
 import { calculateOfferTotals } from "@/lib/offer-utils";
 import type { Offer, Product, Config } from "@/lib/types";
 import type { OfferWithTotals } from "@/lib/types";
@@ -433,7 +433,7 @@ function PreviewStandard({ owt, config }: { owt: OfferWithTotals; config: Config
 
 // ── SKABELON: EV_ERHVERV_V2 (server-rendered iframe) ─────────────────────────
 
-function PreviewEvErhvervV2({ offer }: { offer: Offer }) {
+function PreviewEvErhvervV2({ offer, iframeRef }: { offer: Offer; iframeRef: React.RefObject<HTMLIFrameElement> }) {
   const [iframeHeight, setIframeHeight] = useState(900);
   const [htmlUrl, setHtmlUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -469,6 +469,7 @@ function PreviewEvErhvervV2({ offer }: { offer: Offer }) {
       {loading && <Skeleton className="h-[900px]" />}
       {htmlUrl && (
         <iframe
+          ref={iframeRef}
           src={htmlUrl}
           title="Tilbud preview"
           className="w-full border-0"
@@ -489,7 +490,7 @@ function PreviewEvErhvervV2({ offer }: { offer: Offer }) {
 
 export default function PreviewPage({ offer }: PreviewPageProps) {
   const [, navigate] = useLocation();
-  const [pdfLoading, setPdfLoading] = useState(false);
+  const v2IframeRef = useRef<HTMLIFrameElement>(null) as React.RefObject<HTMLIFrameElement>;
 
   const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -528,30 +529,11 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
     }
   };
 
-  const handleDownloadPdf = async () => {
-    if (!offer || pdfLoading) return;
-    setPdfLoading(true);
-    try {
-      const res = await fetch("/api/pdf-export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(offer),
-      });
-      if (!res.ok) throw new Error();
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `tilbud-${offer.meta.tilbudNr || "draft"}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      console.error("PDF export failed");
-    } finally {
-      setPdfLoading(false);
+  const handlePrint = () => {
+    if (offer?.skabelon === "ev_erhverv_v2") {
+      v2IframeRef.current?.contentWindow?.print();
+    } else {
+      window.print();
     }
   };
 
@@ -589,34 +571,22 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
           </Button>
           <div className="flex-1" />
           <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadPdf}
-              disabled={pdfLoading}
-              data-testid="button-download-pdf"
-            >
-              <FileDown className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">{pdfLoading ? "Genererer…" : "Download PDF"}</span>
-            </Button>
             {!isV2 && (
               <Button variant="outline" size="sm" onClick={handleDownloadHtml} data-testid="button-download-html">
                 <FileText className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Download HTML</span>
               </Button>
             )}
-            {!isV2 && (
-              <Button size="sm" onClick={() => window.print()} data-testid="button-print-preview">
-                <Printer className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Print / PDF</span>
-              </Button>
-            )}
+            <Button size="sm" onClick={handlePrint} data-testid="button-print-preview">
+              <Printer className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Print / PDF</span>
+            </Button>
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto p-3 sm:p-8">
-        {skabelon === "ev_erhverv_v2" && <PreviewEvErhvervV2 offer={offer} />}
+        {skabelon === "ev_erhverv_v2" && <PreviewEvErhvervV2 offer={offer} iframeRef={v2IframeRef} />}
         {skabelon === "ev_erhverv" && <PreviewEvErhverv owt={owt} config={config} />}
         {skabelon === "energi_privat" && <PreviewEnergiPrivat owt={owt} config={config} />}
         {skabelon === "modul_overslag" && <PreviewModulOverslag owt={owt} config={config} />}
