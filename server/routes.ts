@@ -391,6 +391,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     avanceProcent: z.number().min(0).nullable().optional(),
     arbejdstidMinutter: z.number().min(0).nullable().optional(),
     beskrivelse: z.string().nullable().optional(),
+    forbehold: z.string().nullable().optional(),
     aktiv: z.boolean().default(true),
     sortering: z.number().default(0),
   });

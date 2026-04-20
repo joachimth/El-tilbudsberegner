@@ -43,6 +43,7 @@ interface AdminProduct {
   avanceProcent?: number | null;
   arbejdstidMinutter?: number | null;
   beskrivelse?: string | null;
+  forbehold?: string | null;
   aktiv: boolean;
   sortering: number;
 }
@@ -65,6 +66,7 @@ const emptyProduct = (): Partial<AdminProduct> => ({
   avanceProcent: undefined,
   arbejdstidMinutter: undefined,
   beskrivelse: "",
+  forbehold: "",
   aktiv: true,
   sortering: 0,
 });
@@ -210,6 +212,16 @@ function ProduktDialog({
             <Label>Beskrivelse</Label>
             <Textarea value={form.beskrivelse || ""} onChange={e => set("beskrivelse", e.target.value)}
               rows={2} className="mt-1.5 text-base resize-none" />
+          </div>
+
+          <div>
+            <Label>Produkt-specifikke forbehold</Label>
+            <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
+              Tilføjes automatisk til tilbuddet når produktet er med. Én per linje.
+            </p>
+            <Textarea value={form.forbehold || ""} onChange={e => set("forbehold", e.target.value)}
+              rows={3} className="mt-1 text-base resize-none"
+              placeholder={"Kræver godkendt tavle\nBygherre ansvarlig for gravearbejde"} />
           </div>
 
           <div className="flex items-center justify-between py-1">

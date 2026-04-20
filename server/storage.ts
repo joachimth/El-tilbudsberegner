@@ -39,6 +39,7 @@ export class DbStorage {
       avanceProcent: p.avanceProcent ?? null,
       arbejdstidMinutter: p.arbejdstidMinutter ?? null,
       beskrivelse: p.beskrivelse ?? null,
+      forbehold: p.forbehold ?? null,
       aktiv: p.aktiv !== false,
       sortering: p.sortering ?? 0,
     });
@@ -55,6 +56,7 @@ export class DbStorage {
       avanceProcent: p.avanceProcent !== undefined ? (p.avanceProcent ?? null) : undefined,
       arbejdstidMinutter: p.arbejdstidMinutter !== undefined ? (p.arbejdstidMinutter ?? null) : undefined,
       beskrivelse: p.beskrivelse !== undefined ? (p.beskrivelse ?? null) : undefined,
+      forbehold: p.forbehold !== undefined ? (p.forbehold ?? null) : undefined,
       aktiv: p.aktiv !== undefined ? p.aktiv : undefined,
     }).where(eq(produkter.id, id));
   }
@@ -205,13 +207,14 @@ export interface AdminProductInput {
   avanceProcent?: number | null;
   arbejdstidMinutter?: number | null;
   beskrivelse?: string | null;
+  forbehold?: string | null;
   aktiv?: boolean;
   sortering?: number;
 }
 
 function dbRowToProduct(r: {
   id: string; navn: string; enhed: string; pris1: number; pris2plus: number;
-  kategori: string; beskrivelse: string | null;
+  kategori: string; beskrivelse: string | null; forbehold: string | null;
 }): Product {
   return {
     id: r.id,
@@ -221,5 +224,6 @@ function dbRowToProduct(r: {
     pris_2plus: r.pris2plus,
     kategori: r.kategori,
     beskrivelse: r.beskrivelse ?? undefined,
+    forbehold: r.forbehold ?? undefined,
   };
 }

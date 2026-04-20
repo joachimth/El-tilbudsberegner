@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, FileText, Printer } from "lucide-react";
-import { calculateOfferTotals } from "@/lib/offer-utils";
+import { calculateOfferTotals, collectProduktForbehold } from "@/lib/offer-utils";
 import type { Offer, Product, Config } from "@/lib/types";
 import type { OfferWithTotals } from "@/lib/types";
 import { formatDKK } from "@shared/schema";
@@ -82,6 +82,17 @@ function StandardForbeholdBoks({ config }: { config: Config }) {
   return (
     <section className="mb-8">
       <h2 className="text-lg font-semibold mb-3">Generelle forbehold</h2>
+      <ForbeholdBoks lines={lines} />
+    </section>
+  );
+}
+
+function ProduktForbeholdBoks({ owt }: { owt: OfferWithTotals }) {
+  const lines = collectProduktForbehold(owt);
+  if (!lines.length) return null;
+  return (
+    <section className="mb-8">
+      <h2 className="text-lg font-semibold mb-3">Produkt-specifikke forbehold</h2>
       <ForbeholdBoks lines={lines} />
     </section>
   );
@@ -168,6 +179,7 @@ function PreviewEvErhverv({ owt, config }: { owt: OfferWithTotals; config: Confi
           </section>
         )}
 
+        <ProduktForbeholdBoks owt={owt} />
         <StandardForbeholdBoks config={config} />
 
         <footer className="mt-10 pt-6 border-t text-sm text-gray-400">
@@ -233,6 +245,7 @@ function PreviewEnergiPrivat({ owt, config }: { owt: OfferWithTotals; config: Co
           </section>
         )}
 
+        <ProduktForbeholdBoks owt={owt} />
         <StandardForbeholdBoks config={config} />
 
         {/* Samlet pris */}
@@ -338,6 +351,7 @@ function PreviewModulOverslag({ owt, config }: { owt: OfferWithTotals; config: C
           />
         </section>
 
+        <ProduktForbeholdBoks owt={owt} />
         <StandardForbeholdBoks config={config} />
 
         <footer className="mt-10 pt-6 border-t text-sm text-gray-400">
@@ -439,6 +453,10 @@ function PreviewStandard({ owt, config }: { owt: OfferWithTotals; config: Config
             <p className="text-sm text-gray-600 whitespace-pre-wrap">{offer.bemærkninger}</p>
           </section>
         )}
+
+        <section className="mt-4">
+          <ProduktForbeholdBoks owt={owt} />
+        </section>
 
         {config.standardforbehold && (
           <section className="mt-4">
