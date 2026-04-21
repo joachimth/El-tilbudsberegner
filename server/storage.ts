@@ -42,6 +42,7 @@ export class DbStorage {
       forbehold: p.forbehold ?? null,
       tags: p.tags?.length ? p.tags.join(",") : null,
       billedeBase64: p.billedeBase64 ?? null,
+      producentLogoBase64: p.producentLogoBase64 ?? null,
       aktiv: p.aktiv !== false,
       sortering: p.sortering ?? 0,
     });
@@ -61,6 +62,7 @@ export class DbStorage {
       forbehold: p.forbehold !== undefined ? (p.forbehold ?? null) : undefined,
       tags: p.tags !== undefined ? (p.tags?.length ? p.tags.join(",") : null) : undefined,
       billedeBase64: p.billedeBase64 !== undefined ? (p.billedeBase64 ?? null) : undefined,
+      producentLogoBase64: p.producentLogoBase64 !== undefined ? (p.producentLogoBase64 ?? null) : undefined,
       aktiv: p.aktiv !== undefined ? p.aktiv : undefined,
     }).where(eq(produkter.id, id));
   }
@@ -86,6 +88,7 @@ export class DbStorage {
       betalingsbetingelser: m.betalingsbetingelser || "",
       standardforbehold: m.standardforbehold || "",
       firmalogo: m.firmalogo || "",
+      logoInverter: m.logoInverter !== "false",
       skabelonKategorier: (() => { try { return JSON.parse(m.skabelonKategorier || "{}"); } catch { return {}; } })(),
     };
   }
@@ -227,6 +230,7 @@ export interface AdminProductInput {
   forbehold?: string | null;
   tags?: string[] | null;
   billedeBase64?: string | null;
+  producentLogoBase64?: string | null;
   aktiv?: boolean;
   sortering?: number;
 }
@@ -234,7 +238,7 @@ export interface AdminProductInput {
 function dbRowToProduct(r: {
   id: string; navn: string; enhed: string; pris1: number; pris2plus: number;
   kategori: string; beskrivelse: string | null; forbehold: string | null;
-  tags: string | null; billedeBase64: string | null;
+  tags: string | null; billedeBase64: string | null; producentLogoBase64: string | null;
 }): Product {
   return {
     id: r.id,
@@ -247,5 +251,6 @@ function dbRowToProduct(r: {
     forbehold: r.forbehold ?? undefined,
     tags: r.tags ? r.tags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
     billedeBase64: r.billedeBase64 ?? undefined,
+    producentLogoBase64: r.producentLogoBase64 ?? undefined,
   };
 }

@@ -46,6 +46,7 @@ interface AdminProduct {
   forbehold?: string | null;
   tags?: string[] | null;
   billedeBase64?: string | null;
+  producentLogoBase64?: string | null;
   aktiv: boolean;
   sortering: number;
 }
@@ -193,6 +194,59 @@ function ProduktDialog({
                   />
                 </label>
                 <p className="text-xs text-muted-foreground">PNG, JPG eller SVG — maks. 3 MB</p>
+              </div>
+            </div>
+          )}
+
+          {/* Producentlogo */}
+          {!isNew && (
+            <div>
+              <Label>Producentlogo</Label>
+              <div className="mt-2 space-y-2">
+                {form.producentLogoBase64 && (
+                  <div className="relative inline-block">
+                    <img src={form.producentLogoBase64} alt="Producentlogo" className="max-h-10 max-w-[120px] object-contain rounded border p-1 bg-white" />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await fetch(`/api/admin/products/${initial!.id}/producentlogo`, { method: "DELETE", credentials: "include" });
+                        set("producentLogoBase64", null);
+                        qclient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+                        qclient.invalidateQueries({ queryKey: ["/api/products"] });
+                      }}
+                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center"
+                      title="Fjern producentlogo"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <label className="flex items-center gap-2 cursor-pointer w-fit">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-input bg-background hover:bg-accent text-sm">
+                    <ImagePlus className="w-4 h-4" />
+                    {form.producentLogoBase64 ? "Skift logo" : "Upload producentlogo"}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const fd = new FormData();
+                      fd.append("producentlogo", file);
+                      const res = await fetch(`/api/admin/products/${initial!.id}/producentlogo`, { method: "POST", credentials: "include", body: fd });
+                      if (res.ok) {
+                        const data = await res.json();
+                        set("producentLogoBase64", data.logo);
+                        qclient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+                        qclient.invalidateQueries({ queryKey: ["/api/products"] });
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <p className="text-xs text-muted-foreground">PNG, JPG eller SVG — maks. 2 MB. Vises diskret under produktnavn i EV Erhverv V2.</p>
               </div>
             </div>
           )}
@@ -699,6 +753,19 @@ function IndstillingerTab() {
                 />
               </label>
               <p className="text-xs text-muted-foreground">PNG, JPG eller SVG — maks. 2 MB. Vises på alle tilbud.</p>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
+              <div>
+                <p className="text-sm font-medium">Invertér logo til hvid (EV V2 header)</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Slå til hvis logoet er mørkt og skal vises hvidt på den farvede header-bjælke.
+                  Slå fra hvis logoet allerede er lyst/hvidt.
+                </p>
+              </div>
+              <Switch
+                checked={s.logoInverter !== "false"}
+                onCheckedChange={v => set("logoInverter", v ? "true" : "false")}
+              />
             </div>
           </div>
 

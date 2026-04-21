@@ -67,6 +67,9 @@ export async function initDatabase(): Promise<void> {
     await client.query(`
       ALTER TABLE produkter ADD COLUMN IF NOT EXISTS billede_base64 TEXT
     `);
+    await client.query(`
+      ALTER TABLE produkter ADD COLUMN IF NOT EXISTS producent_logo_base64 TEXT
+    `);
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS indstillinger (

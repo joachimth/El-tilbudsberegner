@@ -5,7 +5,7 @@ type PricingMode = "section_total" | "line_items" | "line_items_with_total" | "h
 type LokData = {
   navn: string;
   subtotal: number;
-  linjer: { navn: string; enhed: string; antal: number; linjepris: number; billede?: string }[];
+  linjer: { navn: string; enhed: string; antal: number; linjepris: number; billede?: string; producentLogo?: string }[];
 };
 
 export interface V2TemplateKonfig {
@@ -64,7 +64,7 @@ export function renderEvErhvervV2(
       const enhedspris = l.antal === 1 ? p.pris_1 : p.pris_2plus;
       const price = l.antal * enhedspris;
       sub += price;
-      return [{ navn: p.navn, enhed: p.enhed, antal: l.antal, linjepris: price, billede: p.billedeBase64 }];
+      return [{ navn: p.navn, enhed: p.enhed, antal: l.antal, linjepris: price, billede: p.billedeBase64, producentLogo: p.producentLogoBase64 }];
     });
     return { navn: lok.navn, subtotal: sub, linjer };
   });
@@ -414,9 +414,10 @@ export function renderEvErhvervV2(
 
   // ── Sections ─────────────────────────────────────────────────────────────────
 
+  const logoFilter = config.logoInverter !== false ? "filter:brightness(0) invert(1);" : "";
   const headerBand = `<div class="header-band">
     <div class="header-band-firma">${config.firmalogo
-      ? `<img src="${config.firmalogo}" alt="Logo" style="max-height:28px;max-width:120px;object-fit:contain;vertical-align:middle;filter:brightness(0) invert(1);">`
+      ? `<img src="${config.firmalogo}" alt="Logo" style="max-height:28px;max-width:120px;object-fit:contain;vertical-align:middle;${logoFilter}">`
       : esc(config.firmanavn)
     }</div>
     <div class="header-band-contact">${[
@@ -487,12 +488,14 @@ export function renderEvErhvervV2(
     let prissætningHtml: string;
     const thumb = (l: typeof lok.linjer[0]) =>
       l.billede ? `<img class="prod-thumb" src="${l.billede}" alt="" onerror="this.style.display='none'">` : "";
+    const prodNavn = (l: typeof lok.linjer[0]) =>
+      `${thumb(l)}${esc(l.navn)}${l.producentLogo ? `<br><img src="${esc(l.producentLogo)}" alt="" style="max-height:14px;max-width:56px;object-fit:contain;vertical-align:middle;margin-top:2px;opacity:0.65;" onerror="this.style.display='none'">` : ""}`;
 
     if (mode === "hidden_prices") {
       prissætningHtml = `<table class="prod-table">
         <thead><tr><th>Beskrivelse</th><th class="col-antal">Antal</th></tr></thead>
         <tbody>${lok.linjer.map(l =>
-          `<tr><td>${thumb(l)}${esc(l.navn)}</td><td class="col-antal">${l.antal}&nbsp;${esc(l.enhed)}</td></tr>`
+          `<tr><td>${prodNavn(l)}</td><td class="col-antal">${l.antal}&nbsp;${esc(l.enhed)}</td></tr>`
         ).join("")}</tbody>
       </table>`;
     } else if (mode === "section_total") {
@@ -506,7 +509,7 @@ export function renderEvErhvervV2(
         <thead><tr><th>Beskrivelse</th><th class="col-antal">Antal</th><th>Pris</th></tr></thead>
         <tbody>
           ${lok.linjer.map(l =>
-            `<tr><td>${thumb(l)}${esc(l.navn)}</td><td class="col-antal">${l.antal}&nbsp;${esc(l.enhed)}</td><td>${fmtDKK(l.linjepris)}</td></tr>`
+            `<tr><td>${prodNavn(l)}</td><td class="col-antal">${l.antal}&nbsp;${esc(l.enhed)}</td><td>${fmtDKK(l.linjepris)}</td></tr>`
           ).join("")}
           ${showSubtotal ? `<tr class="subtotal-row">
             <td colspan="2" style="text-align:right;color:var(--muted);">Subtotal</td>

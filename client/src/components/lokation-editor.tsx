@@ -55,7 +55,10 @@ export function LokationEditor({
 
   const filterAktiv = kategoriFilter.length > 0;
   const visibleProducts = filterAktiv && !visAlle
-    ? products.filter(p => kategoriFilter.includes(p.kategori))
+    ? products.filter(p =>
+        kategoriFilter.includes(p.kategori) ||
+        p.tags?.some(tag => kategoriFilter.includes(tag))
+      )
     : products;
 
   const subtotal = lokation.linjer.reduce((sum, linje) => {
