@@ -14,6 +14,7 @@ export const productSchema = z.object({
   forbehold: z.string().optional(),
   tags: z.array(z.string()).optional(),
   billedeBase64: z.string().optional(),
+  producentLogoBase64: z.string().optional(),
   ean: z.string().optional(),
   internVarenr: z.string().optional(),
 });
@@ -131,6 +132,7 @@ export const configSchema = z.object({
   betalingsbetingelser: z.string(),
   standardforbehold: z.string().default(""),
   firmalogo: z.string().default(""),
+  logoInverter: z.boolean().default(true),
   skabelonKategorier: z.record(z.string(), z.array(z.string())).default({}),
 });
 

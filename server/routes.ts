@@ -467,6 +467,36 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Admin: Producentlogo ──────────────────────────────────────────────
+
+  const producentLogoUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      cb(null, file.mimetype.startsWith("image/"));
+    },
+  });
+
+  app.post("/api/admin/products/:id/producentlogo", requireAdmin, producentLogoUpload.single("producentlogo"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Ingen fil modtaget" });
+      const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+      await storage.updateProduct(String(req.params.id), { producentLogoBase64: base64 });
+      res.json({ ok: true, logo: base64 });
+    } catch {
+      res.status(500).json({ error: "Kunne ikke gemme producentlogo" });
+    }
+  });
+
+  app.delete("/api/admin/products/:id/producentlogo", requireAdmin, async (req, res) => {
+    try {
+      await storage.updateProduct(String(req.params.id), { producentLogoBase64: null });
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Kunne ikke fjerne producentlogo" });
+    }
+  });
+
   // ── Admin: Firmalogo ─────────────────────────────────────────────────
 
   const logoUpload = multer({
