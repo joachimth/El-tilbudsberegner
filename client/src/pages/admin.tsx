@@ -45,6 +45,7 @@ interface AdminProduct {
   beskrivelse?: string | null;
   forbehold?: string | null;
   tags?: string[] | null;
+  billedeBase64?: string | null;
   aktiv: boolean;
   sortering: number;
 }
@@ -143,6 +144,59 @@ function ProduktDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Produktbillede */}
+          {!isNew && (
+            <div>
+              <Label>Produktbillede</Label>
+              <div className="mt-2 space-y-2">
+                {form.billedeBase64 && (
+                  <div className="relative inline-block">
+                    <img src={form.billedeBase64} alt="Produktbillede" className="max-h-24 max-w-[160px] object-contain rounded border p-1 bg-white" />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await fetch(`/api/admin/products/${initial!.id}/billede`, { method: "DELETE", credentials: "include" });
+                        set("billedeBase64", null);
+                        qclient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+                        qclient.invalidateQueries({ queryKey: ["/api/products"] });
+                      }}
+                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center"
+                      title="Fjern billede"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <label className="flex items-center gap-2 cursor-pointer w-fit">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-input bg-background hover:bg-accent text-sm">
+                    <ImagePlus className="w-4 h-4" />
+                    {form.billedeBase64 ? "Skift billede" : "Upload billede"}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const fd = new FormData();
+                      fd.append("billede", file);
+                      const res = await fetch(`/api/admin/products/${initial!.id}/billede`, { method: "POST", credentials: "include", body: fd });
+                      if (res.ok) {
+                        const data = await res.json();
+                        set("billedeBase64", data.billede);
+                        qclient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+                        qclient.invalidateQueries({ queryKey: ["/api/products"] });
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <p className="text-xs text-muted-foreground">PNG, JPG eller SVG — maks. 3 MB</p>
+              </div>
+            </div>
+          )}
+
           {/* ID – kun ved oprettelse */}
           {isNew && (
             <div>
@@ -362,6 +416,9 @@ function ProdukterTab({ timepris }: { timepris: number }) {
                     const fortjeneste = p.pris_1 - kalk;
                     return (
                       <div key={p.id} className={`flex items-start gap-3 px-4 py-3 ${i > 0 ? "border-t" : ""}`}>
+                        {p.billedeBase64 && (
+                          <img src={p.billedeBase64} alt="" className="w-10 h-10 object-contain rounded border bg-white shrink-0 mt-0.5" />
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-sm">{p.navn}</span>

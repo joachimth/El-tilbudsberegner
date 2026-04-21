@@ -39,6 +39,7 @@ export const produkter = pgTable("produkter", {
   beskrivelse: text("beskrivelse"),
   forbehold: text("forbehold"),
   tags: text("tags"),
+  billedeBase64: text("billede_base64"),
   aktiv: boolean("aktiv").default(true).notNull(),
   sortering: integer("sortering").default(0),
 });

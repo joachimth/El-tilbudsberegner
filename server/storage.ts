@@ -41,6 +41,7 @@ export class DbStorage {
       beskrivelse: p.beskrivelse ?? null,
       forbehold: p.forbehold ?? null,
       tags: p.tags?.length ? p.tags.join(",") : null,
+      billedeBase64: p.billedeBase64 ?? null,
       aktiv: p.aktiv !== false,
       sortering: p.sortering ?? 0,
     });
@@ -59,6 +60,7 @@ export class DbStorage {
       beskrivelse: p.beskrivelse !== undefined ? (p.beskrivelse ?? null) : undefined,
       forbehold: p.forbehold !== undefined ? (p.forbehold ?? null) : undefined,
       tags: p.tags !== undefined ? (p.tags?.length ? p.tags.join(",") : null) : undefined,
+      billedeBase64: p.billedeBase64 !== undefined ? (p.billedeBase64 ?? null) : undefined,
       aktiv: p.aktiv !== undefined ? p.aktiv : undefined,
     }).where(eq(produkter.id, id));
   }
@@ -213,13 +215,15 @@ export interface AdminProductInput {
   beskrivelse?: string | null;
   forbehold?: string | null;
   tags?: string[] | null;
+  billedeBase64?: string | null;
   aktiv?: boolean;
   sortering?: number;
 }
 
 function dbRowToProduct(r: {
   id: string; navn: string; enhed: string; pris1: number; pris2plus: number;
-  kategori: string; beskrivelse: string | null; forbehold: string | null; tags: string | null;
+  kategori: string; beskrivelse: string | null; forbehold: string | null;
+  tags: string | null; billedeBase64: string | null;
 }): Product {
   return {
     id: r.id,
@@ -231,5 +235,6 @@ function dbRowToProduct(r: {
     beskrivelse: r.beskrivelse ?? undefined,
     forbehold: r.forbehold ?? undefined,
     tags: r.tags ? r.tags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
+    billedeBase64: r.billedeBase64 ?? undefined,
   };
 }

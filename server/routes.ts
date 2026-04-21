@@ -430,6 +430,37 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Admin: Produktbillede ────────────────────────────────────────────
+
+  const produktBilledeUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 3 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype.startsWith("image/")) cb(null, true);
+      else cb(new Error("Kun billedfiler er tilladt"));
+    },
+  });
+
+  app.post("/api/admin/products/:id/billede", requireAdmin, produktBilledeUpload.single("billede"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Ingen fil modtaget" });
+      const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+      await storage.updateProduct(String(req.params.id), { billedeBase64: base64 });
+      res.json({ ok: true, billede: base64 });
+    } catch {
+      res.status(500).json({ error: "Kunne ikke gemme billede" });
+    }
+  });
+
+  app.delete("/api/admin/products/:id/billede", requireAdmin, async (req, res) => {
+    try {
+      await storage.updateProduct(String(req.params.id), { billedeBase64: null });
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Kunne ikke fjerne billede" });
+    }
+  });
+
   // ── Admin: Firmalogo ─────────────────────────────────────────────────
 
   const logoUpload = multer({

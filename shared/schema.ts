@@ -13,6 +13,7 @@ export const productSchema = z.object({
   beskrivelse: z.string().optional(),
   forbehold: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  billedeBase64: z.string().optional(),
   ean: z.string().optional(),
   internVarenr: z.string().optional(),
 });
