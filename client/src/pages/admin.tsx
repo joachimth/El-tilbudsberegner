@@ -470,8 +470,8 @@ function ProdukterTab({ timepris }: { timepris: number }) {
                     const fortjeneste = p.pris_1 - kalk;
                     return (
                       <div key={p.id} className={`flex items-start gap-3 px-4 py-3 ${i > 0 ? "border-t" : ""}`}>
-                        {p.billedeBase64 && (
-                          <img src={p.billedeBase64} alt="" className="w-10 h-10 object-contain rounded border bg-white shrink-0 mt-0.5" />
+                        {(p.billedeBase64 || p.heeftBillede) && (
+                          <img src={p.billedeBase64 || `/api/products/${p.id}/billede`} alt="" className="w-10 h-10 object-contain rounded border bg-white shrink-0 mt-0.5" />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">

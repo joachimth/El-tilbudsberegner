@@ -15,6 +15,8 @@ export const productSchema = z.object({
   tags: z.array(z.string()).optional(),
   billedeBase64: z.string().optional(),
   producentLogoBase64: z.string().optional(),
+  heeftBillede: z.boolean().optional(),
+  heeftProducentLogo: z.boolean().optional(),
   ean: z.string().optional(),
   internVarenr: z.string().optional(),
 });
