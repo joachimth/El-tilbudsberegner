@@ -339,7 +339,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const offer = parseResult.data;
       const products = await storage.getProducts();
       const config = await storage.getConfig();
-      const html = genererHtml(offer, products, config);
+      let html: string;
+      if (offer.skabelon === "ev_erhverv_v2") {
+        const templateKonfig = await storage.getSkabelonKonfig("ev_erhverv_v2");
+        html = renderEvErhvervV2(offer, products, config, offer.v2, templateKonfig);
+      } else {
+        html = genererHtml(offer, products, config);
+      }
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="tilbud-${offer.meta.tilbudNr || "draft"}.html"`);
       res.send(html);
@@ -509,6 +515,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Kunne ikke gemme indstillinger" });
+    }
+  });
+
+  // ── Admin: Skabelon-konfiguration ─────────────────────────────────────
+
+  app.get("/api/admin/skabelon/:skabelon", requireAdmin, async (req, res) => {
+    try {
+      const konfig = await storage.getSkabelonKonfig(String(req.params.skabelon));
+      res.json(konfig);
+    } catch {
+      res.status(500).json({ error: "Kunne ikke hente skabelon-konfiguration" });
+    }
+  });
+
+  app.put("/api/admin/skabelon/:skabelon", requireAdmin, async (req, res) => {
+    try {
+      await storage.updateSkabelonKonfig(String(req.params.skabelon), req.body);
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Kunne ikke gemme skabelon-konfiguration" });
     }
   });
 

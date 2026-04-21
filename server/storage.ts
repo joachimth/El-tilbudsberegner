@@ -108,6 +108,17 @@ export class DbStorage {
     }
   }
 
+  async getSkabelonKonfig(skabelon: string): Promise<Record<string, any>> {
+    const rows = await db.select().from(indstillinger)
+      .where(eq(indstillinger.nøgle, `skabelon_${skabelon}`));
+    if (!rows.length) return {};
+    try { return JSON.parse(rows[0].værdi); } catch { return {}; }
+  }
+
+  async updateSkabelonKonfig(skabelon: string, konfig: Record<string, any>): Promise<void> {
+    await this.updateSetting(`skabelon_${skabelon}`, JSON.stringify(konfig));
+  }
+
   // ── Tilbud ─────────────────────────────────────────────────────────────
 
   async saveOffer(offer: Offer, userId?: number): Promise<string> {

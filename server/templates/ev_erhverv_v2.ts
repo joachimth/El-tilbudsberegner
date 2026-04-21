@@ -8,11 +8,40 @@ type LokData = {
   linjer: { navn: string; enhed: string; antal: number; linjepris: number; billede?: string }[];
 };
 
+export interface V2TemplateKonfig {
+  hero?: { overskrift?: string; underoverskrift?: string };
+  fordele?: Array<{ ikon?: string; titel: string; tekst?: string }>;
+  kontaktperson?: { navn?: string; titel?: string; telefon?: string; email?: string };
+  cta?: { overskrift?: string; tekst?: string };
+  accentFarve?: string;
+}
+
+function darkenHex(hex: string, amount: number): string {
+  const m = hex.match(/^#?([0-9a-fA-F]{6})$/);
+  if (!m) return hex;
+  const r = parseInt(m[1].slice(0, 2), 16);
+  const g = parseInt(m[1].slice(2, 4), 16);
+  const b = parseInt(m[1].slice(4, 6), 16);
+  const d = (c: number) => Math.max(0, Math.round(c * (1 - amount))).toString(16).padStart(2, "0");
+  return `#${d(r)}${d(g)}${d(b)}`;
+}
+
+function lightenHex(hex: string, amount: number): string {
+  const m = hex.match(/^#?([0-9a-fA-F]{6})$/);
+  if (!m) return hex;
+  const r = parseInt(m[1].slice(0, 2), 16);
+  const g = parseInt(m[1].slice(2, 4), 16);
+  const b = parseInt(m[1].slice(4, 6), 16);
+  const l = (c: number) => Math.min(255, Math.round(c + (255 - c) * amount)).toString(16).padStart(2, "0");
+  return `#${l(r)}${l(g)}${l(b)}`;
+}
+
 export function renderEvErhvervV2(
   offer: Offer,
   products: Product[],
   config: Config,
-  v2: V2Data = { globalPricingMode: "line_items", sektioner: [] }
+  v2: V2Data = { globalPricingMode: "line_items", sektioner: [] },
+  templateKonfig: V2TemplateKonfig = {}
 ): string {
   const pm = new Map(products.map(p => [p.id, p]));
 
@@ -48,6 +77,11 @@ export function renderEvErhvervV2(
   const slutLabel = offer.moms.visInkl ? "Samlet pris inkl. moms" : "Samlet pris ekskl. moms";
   const globalMode = (v2.globalPricingMode || "line_items") as PricingMode;
 
+  const accent = (templateKonfig.accentFarve || "#1f4d6b").trim();
+  const accentDark = darkenHex(accent, 0.25);
+  const accentMid = lightenHex(accent, 0.35);
+  const accentLight = lightenHex(accent, 0.88);
+
   const getSektionMode = (lokNavn: string): PricingMode => {
     const s = v2.sektioner?.find(s => s.lokationNavn === lokNavn);
     return (s?.pricingMode as PricingMode) || globalMode;
@@ -60,10 +94,10 @@ export function renderEvErhvervV2(
   // ── CSS ──────────────────────────────────────────────────────────────────────
   const CSS = `
     :root {
-      --accent: #1f4d6b;
-      --accent-dark: #163751;
-      --accent-light: #e8f1f7;
-      --accent-mid: #2d6d96;
+      --accent: ${accent};
+      --accent-dark: ${accentDark};
+      --accent-light: ${accentLight};
+      --accent-mid: ${accentMid};
       --text: #111827;
       --muted: #6b7280;
       --border: #e5e7eb;
@@ -413,8 +447,8 @@ export function renderEvErhvervV2(
     </div>
   </div>`;
 
-  const heroH = v2.hero?.overskrift || offer.meta.projektnavn || "Tilbud";
-  const heroSub = v2.hero?.underoverskrift || "Vi præsenterer hermed vores tilbud og ser frem til at levere den bedste løsning for Jer.";
+  const heroH = v2.hero?.overskrift || templateKonfig.hero?.overskrift || offer.meta.projektnavn || "Tilbud";
+  const heroSub = v2.hero?.underoverskrift || templateKonfig.hero?.underoverskrift || "Vi præsenterer hermed vores tilbud og ser frem til at levere den bedste løsning for Jer.";
   const heroContent = v2.hero?.billedeUrl
     ? `<div class="hero-with-image">
         <div class="hero-text">
@@ -434,7 +468,9 @@ export function renderEvErhvervV2(
     { ikon: "🏅", titel: "Certificeret kvalitet", tekst: "Autoriserede el-installatører med dokumenteret erhvervserfaring" },
     { ikon: "🛡️", titel: "Garanti & service", tekst: "Fuld garanti på arbejde og materialer samt efterfølgende support" },
   ];
-  const fordele = v2.fordele && v2.fordele.length > 0 ? v2.fordele : defaultFordele;
+  const fordele = (v2.fordele && v2.fordele.length > 0)
+    ? v2.fordele
+    : (templateKonfig.fordele && templateKonfig.fordele.length > 0 ? templateKonfig.fordele : defaultFordele);
   const fordeleSektionHtml = `<div class="section">
     <div class="section-h2">Hvorfor vælge os</div>
     <div class="fordele-grid">${fordele.map(f => `<div class="fordel-card">
@@ -536,8 +572,8 @@ export function renderEvErhvervV2(
   </div>` : "";
 
   const ctaBlok = v2.salgsblokke?.find(b => b.type === "cta");
-  const ctaH = ctaBlok?.overskrift || "Klar til at komme i gang?";
-  const ctaSub = ctaBlok?.tekst || "Kontakt os i dag for at aftale næste skridt — vi er klar til at hjælpe.";
+  const ctaH = ctaBlok?.overskrift || templateKonfig.cta?.overskrift || "Klar til at komme i gang?";
+  const ctaSub = ctaBlok?.tekst || templateKonfig.cta?.tekst || "Kontakt os i dag for at aftale næste skridt — vi er klar til at hjælpe.";
   const ctaKontakter = [
     config.telefon && `<div class="cta-contact-item"><div class="cta-contact-label">Telefon</div>${esc(config.telefon)}</div>`,
     config.email && `<div class="cta-contact-item"><div class="cta-contact-label">Email</div>${esc(config.email)}</div>`,
@@ -552,8 +588,9 @@ export function renderEvErhvervV2(
   </div>`;
 
   let kontaktHtml = "";
-  if (v2.kontaktperson) {
-    const k = v2.kontaktperson;
+  const kontaktperson = v2.kontaktperson || (templateKonfig.kontaktperson?.navn ? templateKonfig.kontaktperson : undefined);
+  if (kontaktperson) {
+    const k = kontaktperson;
     const avatar = k.billedeUrl
       ? `<img class="kontakt-avatar" src="${esc(k.billedeUrl)}" alt="" onerror="this.style.display='none'" />`
       : `<div class="kontakt-avatar-placeholder">${esc((k.navn || "?")[0].toUpperCase())}</div>`;
