@@ -128,10 +128,11 @@ Alle skabeloner understøtter fritekst-forbehold via `offer.bemærkninger` (mult
 
 ## Admin Panel (`client/src/pages/admin.tsx`)
 
-Tre faner:
+Fire faner:
 1. **Produkter** — Søg, opret, rediger, slet produkter. Filtrering pr. kategori.
 2. **Indstillinger** — Firmaoplysninger (navn, adresse, CVR, tlf, email), timepris, momsprocent, standardtekst, betalingsbetingelser.
-3. **Brugere** — Opret/slet brugere, tildel roller (`montør`/`admin`).
+3. **Skabeloner** — Tilpas EV Erhverv V2-skabelonen: farvetema, hero-tekster, fordele-kort, kontaktperson, CTA-blok.
+4. **Brugere** — Opret/slet brugere, tildel roller (`montør`/`admin`).
 
 **Vigtigt:** Alle `queryFn` i admin.tsx **skal** kaste fejl ved non-OK svar (`if (!res.ok) throw new Error(...)`). Returneres fejl-JSON som data i stedet for at kaste, vil `.filter()` på et non-array crashe komponenten → blank side.
 
@@ -187,21 +188,6 @@ Previously used Playwright + Chromium (`server/templates/pdf.ts`). Removed becau
 
 ## TODO / Roadmap
 
-### Redigering af skabeloner fra admin siden
-**Status:** Ikke implementeret
-
-Mål: Admin kan tilpasse skabelon-tekster, farvetema og standardindhold uden at ændre kode.
-
-Hvad der kan gøres konfigurerbart:
-- V2: hero-overskrift/-underoverskrift, fordele-tekster, CTA-tekst, kontaktperson
-- Alle: standardtekst i forbehold-sektionen, betalingsbetingelser
-- Farvetema (primær-/accentfarve per skabelon)
-
-Implementering:
-- Tilføj `skabelon_konfig`-tabel med `skabelon TEXT, nøgle TEXT, værdi TEXT`
-- Admin-fane "Skabeloner" med editor per skabelon
-- Server-side: injicér konfiguration ved HTML-generering (`ev_erhverv_v2.ts`)
-
 ### Fremtidige optimeringer
 - SVG-logo i V2 header-band: fjern `filter:brightness(0) invert(1)` og lad admin vælge om logoet er lyst/mørkt
 - Producentlogo per produkt (`producent_logo_base64`) — vises under produktnavn i tilbud
@@ -234,3 +220,21 @@ Produkter har et `forbehold`-felt (newline-separeret tekst). `collectProduktForb
 
 ### ✅ Skabelon-specifikke produktkategorier
 `skabelonKategorier` gemmes som JSON-streng i `indstillinger`-tabellen (`Record<string, string[]>`). Admin Indstillinger: `SkabelonKategorierCard` med chip-toggles per skabelon × kategori. Editor sender `kategoriFilter` til `LokationEditor` som filtrerer `visibleProducts`. Toggle "Vis alle kategorier" tilgængeligt når filter er aktivt.
+
+### ✅ Redigering af skabeloner fra admin siden
+Admin kan tilpasse EV Erhverv V2-skabelonen via "Skabeloner"-fanen i admin-panelet uden at ændre kode.
+
+**Konfigurerbbare felter:**
+- **Farvetema** — hex-farve for `--accent` (mørk/mid/lys variant beregnes automatisk via `darkenHex`/`lightenHex`)
+- **Hero-sektion** — standardoverskrift og -underoverskrift (fallback når tilbud ikke har projektnavn)
+- **Fordele-kort** — 3 kort med ikon, titel og beskrivelse
+- **Kontaktperson** — navn, titel, telefon, e-mail (vises kun når tilbud ikke har specifik kontaktperson)
+- **CTA-blok** — overskrift og brødtekst
+
+**Lagring:** JSON-blob i `indstillinger`-tabellen under nøglen `skabelon_ev_erhverv_v2`.
+
+**API:** `GET/PUT /api/admin/skabelon/:skabelon` (admin-only). Storage-metoder: `getSkabelonKonfig(skabelon)` / `updateSkabelonKonfig(skabelon, konfig)`.
+
+**Prioriteringsrækkefølge ved rendering:** `offer.v2`-felter → template-konfiguration → hardcodede defaults.
+
+**Renderer:** `renderEvErhvervV2` i `server/templates/ev_erhverv_v2.ts` accepterer nu et valgfrit 5. argument `templateKonfig: V2TemplateKonfig`.
