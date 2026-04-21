@@ -189,9 +189,6 @@ Previously used Playwright + Chromium (`server/templates/pdf.ts`). Removed becau
 ## TODO / Roadmap
 
 ### Fremtidige optimeringer
-- SVG-logo i V2 header-band: fjern `filter:brightness(0) invert(1)` og lad admin vælge om logoet er lyst/mørkt
-- Producentlogo per produkt (`producent_logo_base64`) — vises under produktnavn i tilbud
-- Tags til skabelon-filtrering: kobl tags på produkter til skabelon-specifikke kategorier
 - Base64-billeder er store i DB — overvej filbaseret storage ved skalering
 
 ---
@@ -209,17 +206,23 @@ Produkter har et `forbehold`-felt (newline-separeret tekst). `collectProduktForb
 #### Hurtig tilføjelse under tilbudsgivning
 `kunde-info-form.tsx` viser chip-række under bemærkninger-feltet. Chips hentes fra `config.standardforbehold`. Klik appender linjen til `offer.bemærkninger` — duplikater ignoreres. Chip skifter til grøn ✓ når linjen allerede er tilføjet.
 
-### ✅ Upload af firmalogo
-`POST /api/admin/logo` (multer memoryStorage → Base64 → `indstillinger`-tabellen, nøgle: `firmalogo`). `DELETE /api/admin/logo` fjerner det. Admin Indstillinger: upload-knap + preview med ×. V1: `DocHoved` viser logo i stedet for firmanavn i tekst. V2: logo i header-band (hvid/inverteret) og doc-hoved.
+### ✅ Upload af firmalogo + logoInverter
+`POST /api/admin/logo` (multer memoryStorage → Base64 → `indstillinger`-tabellen, nøgle: `firmalogo`). `DELETE /api/admin/logo` fjerner det. Admin Indstillinger: upload-knap + preview med ×. V1: `DocHoved` viser logo i stedet for firmanavn i tekst. V2: logo i header-band og doc-hoved.
 
-### ✅ Upload af produktbilleder
+`logoInverter` (boolean, default `true`) styrer om `filter:brightness(0) invert(1)` anvendes på logoet i V2's farvede header-bjælke. Admin-toggle i Indstillinger: "Invertér logo til hvid". Gemmes som `"true"`/`"false"` i `indstillinger`-tabellen, parses i `getConfig()`.
+
+### ✅ Upload af produktbilleder + producentlogo
 `POST /api/admin/products/:id/billede` (multer → Base64 → `billede_base64`-kolonne på `produkter`). `DELETE` fjerner. Admin ProduktDialog: upload ved redigering + live preview. Admin liste: 40×40px thumbnail. V2-skabelon: 32×32px thumbnail inline i tabelrækker.
+
+`producentLogoBase64` — `producent_logo_base64 TEXT`-kolonne på `produkter`. `POST/DELETE /api/admin/products/:id/producentlogo`. Admin ProduktDialog: upload under produktbillede-sektionen. V2-skabelon: vises som diskret logo (max 14px højt) under produktnavn i alle prisvisningsmodes.
 
 ### ✅ Tags til produkter
 `tags TEXT`-kolonne på `produkter` (komma-separeret, eksponeret som `string[]` i API). Admin ProduktDialog: chip-input (Enter/komma tilføjer, × fjerner). Tags vises som outline-badges i produktlisten.
 
-### ✅ Skabelon-specifikke produktkategorier
+### ✅ Skabelon-specifikke produktkategorier + tag-filtrering
 `skabelonKategorier` gemmes som JSON-streng i `indstillinger`-tabellen (`Record<string, string[]>`). Admin Indstillinger: `SkabelonKategorierCard` med chip-toggles per skabelon × kategori. Editor sender `kategoriFilter` til `LokationEditor` som filtrerer `visibleProducts`. Toggle "Vis alle kategorier" tilgængeligt når filter er aktivt.
+
+Tag-filtrering: `visibleProducts` i `lokation-editor.tsx` matcher nu produkter hvor `kategoriFilter` indeholder produktets `kategori` **eller** et af produktets `tags`. Admins kan dermed sætte tag-navne i skabelon-kategorilisten for at trække produkter på tværs af kategorier ind i en template-visning.
 
 ### ✅ Redigering af skabeloner fra admin siden
 Admin kan tilpasse EV Erhverv V2-skabelonen via "Skabeloner"-fanen i admin-panelet uden at ændre kode.
