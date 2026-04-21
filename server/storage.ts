@@ -84,6 +84,7 @@ export class DbStorage {
       betalingsbetingelser: m.betalingsbetingelser || "",
       standardforbehold: m.standardforbehold || "",
       firmalogo: m.firmalogo || "",
+      skabelonKategorier: (() => { try { return JSON.parse(m.skabelonKategorier || "{}"); } catch { return {}; } })(),
     };
   }
 
