@@ -25,6 +25,10 @@ This is a **full-stack TypeScript monorepo** with three layers:
 ### Shared (`shared/schema.ts`)
 Central source of truth. Contains Zod schemas (`Product`, `Linje`, `Lokation`, `Kunde`, `Offer`, `Config`) and pure calculation utilities (`beregnEnhedspris`, `beregnLinjepris`, `formatDKK`). Imported by both client and server via the `@shared/*` path alias.
 
+`Product` felter: `id`, `navn`, `enhed`, `pris_1`, `pris_2plus`, `kategori`, `beskrivelse?`, `forbehold?` (newline-sep.), `tags?` (string[]), `billedeBase64?`.
+
+`Config` felter: `firmanavn`, `adresse`, `postnrBy`, `telefon`, `email`, `cvr`, `momsprocent`, `standardtekst`, `betalingsbetingelser`, `standardforbehold`, `firmalogo` (Base64), `skabelonKategorier` (Record<string, string[]>).
+
 ### Backend (`server/`)
 Express 5 server serving both the API and (in dev) the Vite dev middleware. All storage uses **PostgreSQL via Drizzle ORM** (`server/storage.ts` / `server/db.ts`). Tables are auto-created and seeded on startup via `server/db-init.ts` (users, products, settings, session table). API routes live in `routes.ts`.
 
@@ -183,16 +187,6 @@ Previously used Playwright + Chromium (`server/templates/pdf.ts`). Removed becau
 
 ## TODO / Roadmap
 
-### Skabelon-specifikke produktkategorier
-**Status:** Ikke implementeret
-
-Idé: Hver skabelon kan have en foruddefineret liste af produktkategorier, der er præ-valgt, når brugeren starter et nyt tilbud med den skabelon. Fx viser `ev_erhverv` kun EV-ladere og installation som standard.
-
-Implementering:
-- Tilføj `skabelonKategorier: Record<Skabelon, string[]>` tabel eller felt i `indstillinger`-tabellen
-- Admin-UI: Ny fane eller sektion under Indstillinger til at konfigurere hvilke kategorier der er standard per skabelon
-- Editor: Filtrér produkt-selector til de relevante kategorier ved oprettelse, men tillad brugeren at tilføje andre
-
 ### Redigering af skabeloner fra admin siden
 **Status:** Ikke implementeret
 
@@ -208,64 +202,35 @@ Implementering:
 - Admin-fane "Skabeloner" med editor per skabelon
 - Server-side: injicér konfiguration ved HTML-generering (`ev_erhverv_v2.ts`)
 
-### Upload af firmalogo
-**Status:** Ikke implementeret
+### Fremtidige optimeringer
+- SVG-logo i V2 header-band: fjern `filter:brightness(0) invert(1)` og lad admin vælge om logoet er lyst/mørkt
+- Producentlogo per produkt (`producent_logo_base64`) — vises under produktnavn i tilbud
+- Tags til skabelon-filtrering: kobl tags på produkter til skabelon-specifikke kategorier
+- Base64-billeder er store i DB — overvej filbaseret storage ved skalering
 
-Firmalogo skal vises i tilbudshovedet på alle skabeloner og printes med i PDF.
+---
 
-Implementering:
-- Filupload-endpoint: `POST /api/admin/logo` — gem som Base64 i `indstillinger`-tabellen (nøgle: `firmalogo`) eller gem fil i `server/uploads/`
-- Brug `multer` (allerede i allowlist) til multipart/form-data
-- Admin Indstillinger-fane: Upload-knap + preview
-- Indsæt `<img src="data:image/...;base64,..." />` i alle skabelon-templates
+## Implementeret / Roadmap (færdigt)
 
-### Upload af produktbilleder og producentlogo
-**Status:** Ikke implementeret
-
-Produktbilleder vises på lokationskort i V2-skabelonen og evt. på produktkort i andre skabeloner.
-
-Implementering:
-- Endpoint: `POST /api/admin/products/:id/billede`
-- Gem som Base64 i `produkter`-tabellen (ny kolonne `billede_base64`) eller som fil
-- Admin Produkter-fane: Upload-felt ved redigering af produkt
-- V2-template: Vis produktbillede på lokationskort hvis `sektioner[].billedeUrl` er sat
-- Producentlogo: Separat felt på produkt (`producent_logo_base64`) — vises under produktnavn i tilbud
-
-### Tags til produkter
-**Status:** Ikke implementeret
-
-Tags gør det muligt at markere produkter med ét eller flere nøgleord (fx `"ev-lader"`, `"vvs"`, `"smart-home"`), så specifikke elementer automatisk inkluderes eller fremhæves i en skabelon.
-
-Implementering:
-- Tilføj `tags TEXT[]` kolonne på `produkter`-tabellen (PostgreSQL array)
-- Admin Produkter: Multi-select tag-felt (frit input + forslag fra eksisterende tags)
-- Skabelon-filtrering: Produktselector kan filtrere på tags ud fra skabelonens konfiguration
-- Tilbud-visning: Tags kan styre om et produkt vises med særlig opsætning i en given skabelon (fx altid vis spec-sheet for el-tavler)
-
-### Forbehold og forudsætninger
-**Status:** Delvist implementeret — `offer.bemærkninger` er ét fritekst-felt
+### ✅ Forbehold og forudsætninger
 
 #### Generelle standardforbehold (admin-konfigureret)
-Mål: Admin definerer en liste af standardforbehold, der automatisk inkluderes i alle tilbud (fx "Alle priser er ekskl. moms. og ekskl. stilladsleje").
-
-Implementering:
-- Tilføj `standardforbehold`-rækker i `indstillinger`-tabellen (én per linje, eller JSON-array)
-- Admin Indstillinger: Textarea til redigering af standardforbehold-liste
-- Tilbudsforhåndsvisning: Vis standardforbehold adskilt fra tilbudsspecifikke forbehold
+Admin definerer standardforbehold i Indstillinger (én per linje). Gemmes som `standardforbehold` i `indstillinger`-tabellen. Vises adskilt fra tilbudsspecifikke bemærkninger i alle skabeloner via `StandardForbeholdBoks` i `preview.tsx` og separat sektion i V2.
 
 #### Produkt-specifikke forbehold
-Mål: Et produkt kan have ét eller flere forbehold knyttet til sig, der automatisk tilføjes til tilbudets forbeholds-sektion, når produktet er med.
-
-Implementering:
-- Tilføj `forbehold TEXT[]` kolonne på `produkter`-tabellen
-- Admin Produkter: Textarea/liste til produktspecifikke forbehold
-- `lib/offer-utils.ts`: Saml unikke produkt-forbehold fra alle linjer og merge med `offer.bemærkninger`
+Produkter har et `forbehold`-felt (newline-separeret tekst). `collectProduktForbehold()` i `offer-utils.ts` samler unikke linjer fra alle produkter i tilbuddet. Vises via `ProduktForbeholdBoks` i alle V1-skabeloner.
 
 #### Hurtig tilføjelse under tilbudsgivning
-Mål: Montøren kan med ét klik tilføje et foruddefineret forbehold (fx "Bygherre leverer liftleje") direkte fra editor-siden uden at navigere til indstillinger.
+`kunde-info-form.tsx` viser chip-række under bemærkninger-feltet. Chips hentes fra `config.standardforbehold`. Klik appender linjen til `offer.bemærkninger` — duplikater ignoreres. Chip skifter til grøn ✓ når linjen allerede er tilføjet.
 
-Implementering:
-- `client/src/components/kunde-info-form.tsx`: Tilføj knapper/chips med foruddefinerede forbehold
-- Forslag-liste hentes fra admin-konfigurerede standardforbehold
-- Klik tilføjer teksten til `offer.bemærkninger` (append, ikke overskriv)
-- UI-mønster: `Combobox` eller chip-row under bemærkninger-feltet
+### ✅ Upload af firmalogo
+`POST /api/admin/logo` (multer memoryStorage → Base64 → `indstillinger`-tabellen, nøgle: `firmalogo`). `DELETE /api/admin/logo` fjerner det. Admin Indstillinger: upload-knap + preview med ×. V1: `DocHoved` viser logo i stedet for firmanavn i tekst. V2: logo i header-band (hvid/inverteret) og doc-hoved.
+
+### ✅ Upload af produktbilleder
+`POST /api/admin/products/:id/billede` (multer → Base64 → `billede_base64`-kolonne på `produkter`). `DELETE` fjerner. Admin ProduktDialog: upload ved redigering + live preview. Admin liste: 40×40px thumbnail. V2-skabelon: 32×32px thumbnail inline i tabelrækker.
+
+### ✅ Tags til produkter
+`tags TEXT`-kolonne på `produkter` (komma-separeret, eksponeret som `string[]` i API). Admin ProduktDialog: chip-input (Enter/komma tilføjer, × fjerner). Tags vises som outline-badges i produktlisten.
+
+### ✅ Skabelon-specifikke produktkategorier
+`skabelonKategorier` gemmes som JSON-streng i `indstillinger`-tabellen (`Record<string, string[]>`). Admin Indstillinger: `SkabelonKategorierCard` med chip-toggles per skabelon × kategori. Editor sender `kategoriFilter` til `LokationEditor` som filtrerer `visibleProducts`. Toggle "Vis alle kategorier" tilgængeligt når filter er aktivt.
