@@ -25,9 +25,9 @@ This is a **full-stack TypeScript monorepo** with three layers:
 ### Shared (`shared/schema.ts`)
 Central source of truth. Contains Zod schemas (`Product`, `Linje`, `Lokation`, `Kunde`, `Offer`, `Config`) and pure calculation utilities (`beregnEnhedspris`, `beregnLinjepris`, `formatDKK`). Imported by both client and server via the `@shared/*` path alias.
 
-`Product` felter: `id`, `navn`, `enhed`, `pris_1`, `pris_2plus`, `kategori`, `beskrivelse?`, `forbehold?` (newline-sep.), `tags?` (string[]), `billedeBase64?`.
+`Product` felter: `id`, `navn`, `enhed`, `pris_1`, `pris_2plus`, `kategori`, `beskrivelse?`, `forbehold?` (newline-sep.), `tags?` (string[]), `billedeBase64?`, `producentLogoBase64?`, `heeftBillede?` (boolean-flag i API-svar), `heeftProducentLogo?` (boolean-flag i API-svar).
 
-`Config` felter: `firmanavn`, `adresse`, `postnrBy`, `telefon`, `email`, `cvr`, `momsprocent`, `standardtekst`, `betalingsbetingelser`, `standardforbehold`, `firmalogo` (Base64), `skabelonKategorier` (Record<string, string[]>).
+`Config` felter: `firmanavn`, `adresse`, `postnrBy`, `telefon`, `email`, `cvr`, `momsprocent`, `standardtekst`, `betalingsbetingelser`, `standardforbehold`, `firmalogo` (Base64), `logoInverter` (boolean), `skabelonKategorier` (Record<string, string[]>).
 
 ### Backend (`server/`)
 Express 5 server serving both the API and (in dev) the Vite dev middleware. All storage uses **PostgreSQL via Drizzle ORM** (`server/storage.ts` / `server/db.ts`). Tables are auto-created and seeded on startup via `server/db-init.ts` (users, products, settings, session table). API routes live in `routes.ts`.
@@ -113,6 +113,19 @@ v2?: {
   fordele: Array<{ ikon?, titel, tekst? }>          // Fordels-cards (3 stk default)
   salgsblokke: Array<{ type, overskrift?, tekst?, punkter? }>
   kontaktperson: { navn?, titel?, telefon?, email?, billedeUrl? }
+  blokke?: BlokSchema[]                             // Blok-rækkefølge og -indhold (se TODO)
+}
+```
+
+`V2TemplateKonfig` (gemmes som JSON i `indstillinger` under nøglen `skabelon_ev_erhverv_v2`):
+```typescript
+{
+  hero?: { overskrift?, underoverskrift? }
+  fordele?: Array<{ ikon?, titel, tekst? }>
+  kontaktperson?: { navn?, titel?, telefon?, email? }
+  cta?: { overskrift?, tekst? }
+  accentFarve?: string      // hex-farve, default "#1f4d6b"
+  blokke?: BlokSchema[]     // Template-level blok-defaults (se TODO)
 }
 ```
 
@@ -188,7 +201,199 @@ Previously used Playwright + Chromium (`server/templates/pdf.ts`). Removed becau
 
 ## TODO / Roadmap
 
-*(Ingen åbne punkter — se Implementeret-sektionen nedenfor for færdige features.)*
+### Blok-baseret skabelon-editor med drag-and-drop
+
+**Mål:** V2-tilbud opbygges som en liste af frit redigerbare blokke — inspireret af hjemmesidebyggere (Squarespace/Wix-stil, men simplere). Brugeren kan tilføje, fjerne, flytte og redigere hver blok individuelt. Drag-and-drop er et kernekrav.
+
+---
+
+#### Trin 1 — Install dependencies
+
+```bash
+npm install @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
+```
+
+---
+
+#### Trin 2 — Blok-datamodel (`shared/schema.ts`)
+
+Definer `BlokType`-enum:
+```
+"hero" | "fordele" | "lokationer" | "prissummary" | "forbehold"
+| "cta" | "kontaktperson" | "custom_billede" | "custom_tekst"
+```
+
+Definer `BlokData` (union af alle type-specifikke felter — alle optional):
+```typescript
+{
+  // hero:
+  overskrift?: string
+  underoverskrift?: string
+  billedeUrl?: string
+  tagLabel?: string          // f.eks. "EV & Erhverv"
+
+  // fordele:
+  kort?: Array<{ ikon?: string; titel: string; tekst?: string }>
+
+  // lokationer:
+  globalPricingMode?: PricingMode
+
+  // cta:
+  ctaOverskrift?: string
+  ctaTekst?: string
+
+  // kontaktperson:
+  navn?: string
+  titel?: string
+  telefon?: string
+  email?: string
+  avatarUrl?: string
+
+  // custom_billede:
+  src?: string               // Base64
+  billedeTekst?: string
+  bredde?: "fuld" | "indhold"
+
+  // custom_tekst:
+  tekstOverskrift?: string
+  tekst?: string
+  stil?: "normal" | "fremhævet" | "advarsel"
+}
+```
+
+Definer `BlokSchema`:
+```typescript
+{
+  id: string          // uuid — stabilt nøgle til React-keys og dnd
+  type: BlokType
+  skjult?: boolean
+  data?: BlokData
+}
+```
+
+Tilføj `blokke?: BlokSchema[]` til `v2DataSchema`.
+Tilføj `blokke?: BlokSchema[]` til `V2TemplateKonfig`.
+
+**Prioriteringsrækkefølge ved rendering:**
+`offer.v2.blokke` → `templateKonfig.blokke` → hardcodet standardrækkefølge.
+
+**Standardrækkefølge (fallback):**
+`["hero", "fordele", "lokationer", "prissummary", "forbehold", "cta", "kontaktperson"]`
+
+`headerBand`, `docHoved` og `footer` er altid fast øverst/nederst.
+
+**Blok-data fallback-kæde per felt:**
+`blok.data.overskrift` → `templateKonfig.hero.overskrift` → `offer.meta.projektnavn` → hardcodet default.
+Samme princip for alle øvrige felter — det mest specifikke vinder.
+
+---
+
+#### Trin 3 — Server-side renderer (`ev_erhverv_v2.ts`)
+
+Refaktorer til blok-baseret rendering med `resolveBlokke()`:
+
+```typescript
+function resolveBlokke(
+  offerBlokke?: BlokSchema[],
+  templateBlokke?: BlokSchema[]
+): BlokSchema[]  // returnerer offer → template → standardrækkefølge
+
+function renderBlok(blok: BlokSchema, ctx: RenderContext): string {
+  if (blok.skjult) return "";
+  switch (blok.type) {
+    case "hero":           return renderHero(blok.data, ctx);
+    case "fordele":        return renderFordele(blok.data, ctx);
+    case "lokationer":     return renderLokationer(blok.data, ctx);
+    case "prissummary":    return renderPrissummary(ctx);
+    case "forbehold":      return renderForbehold(ctx);
+    case "cta":            return renderCta(blok.data, ctx);
+    case "kontaktperson":  return renderKontakt(blok.data, ctx);
+    case "custom_billede": return renderCustomBillede(blok.data);
+    case "custom_tekst":   return renderCustomTekst(blok.data);
+  }
+}
+```
+
+`RenderContext` samler `offer`, `config`, `loks`, `templateKonfig` etc.
+Tilføj CSS til `CSS`-strengen for `custom_billede` og `custom_tekst`.
+
+---
+
+#### Trin 4 — Delt `BlokEditor`-komponent (`client/src/components/blok-editor.tsx`)
+
+Genanvendelig React-komponent brugt i **både** admin og offer-editor:
+
+```tsx
+<BlokEditor
+  blokke={blokke}
+  onChange={(blokke) => ...}
+  allowImageUpload={true}
+/>
+```
+
+**Indhold:**
+- `DndContext` + `SortableContext` fra `@dnd-kit/sortable`
+- Sortable blok-liste med `useSortable` hook
+- Per-blok panel (collapsible Card):
+  - Drag-håndtag (`GripVertical`-ikon)
+  - Bloktype-ikon + navn
+  - Øje-ikon (skjul/vis)
+  - Slet-knap (alle bloktyper kan slettes, inkl. standard)
+  - Udvid pil → inline editor for bloktype-specifikke felter
+- **Blok-picker**: "+ Tilføj blok"-knap åbner modal med alle bloktyper som valgbare kort (ikon, navn, beskrivelse)
+- `custom_billede`-blok: `<input type="file">` → FileReader → Base64 i `blok.data.src` (ingen server-endpoint)
+- `custom_tekst`-blok: Textarea + overskrift-input + stil-valg
+
+**Inline editors per bloktype:**
+| Blok | Redigerbare felter |
+|------|-------------------|
+| `hero` | Overskrift, undertitel, tag-label, billede-URL |
+| `fordele` | Tilføj/fjern/rediger kort (ikon + titel + tekst) |
+| `lokationer` | Global pricing-mode |
+| `prissummary` | *(ingen — beregnes automatisk)* |
+| `forbehold` | *(ingen — fra offer.bemærkninger)* |
+| `cta` | Overskrift, brødtekst |
+| `kontaktperson` | Navn, titel, telefon, e-mail, avatar-billede |
+| `custom_billede` | Upload (FileReader→Base64), billedtekst, bredde |
+| `custom_tekst` | Overskrift, tekst, stil (normal/fremhævet/advarsel) |
+
+---
+
+#### Trin 5 — Admin Skabeloner-fane: blok-editor for template-defaults
+
+Ny sektion i `SkabelonerTab` (under eksisterende indholdsfelter):
+
+**"Blokopsætning"**:
+- Integrér `<BlokEditor>` med `templateKonfig.blokke`
+- Gem via `PUT /api/admin/skabelon/ev_erhverv_v2`
+- Forklaring: "Disse blokke bruges som standard for alle nye EV Erhverv V2-tilbud"
+
+---
+
+#### Trin 6 — Offer-editor: per-tilbud blok-tilpasning (`editor.tsx`)
+
+Ny V2-specifik sektion "Tilbudslayout" i editoren:
+- Integrér `<BlokEditor>` med `offer.v2.blokke`
+- Initialiseres fra `templateKonfig.blokke` → standardrækkefølge ved første åbning
+- Ændringer gemmes i `offer.v2.blokke` ved næste "Gem tilbud"
+- Sektionen vises **kun** for V2-tilbud
+
+---
+
+#### Estimeret rækkefølge
+
+| Trin | Omfang | Afhængigheder |
+|------|--------|---------------|
+| 1 — Install dnd-kit | Minimal | — |
+| 2 — Datamodel | Lille | — |
+| 3 — Renderer refaktoring | Mellem | Trin 2 |
+| 4 — BlokEditor-komponent | Stor | Trin 1+2 |
+| 5 — Admin integration | Lille | Trin 3+4 |
+| 6 — Offer-editor integration | Lille | Trin 3+4 |
+
+**Rækkefølge:** 1 → 2 → 3 → 4 → 5 → 6. Trin 4 er det tunge løft; 5 og 6 er stort set blot at montere komponenten.
+
+---
 
 ---
 

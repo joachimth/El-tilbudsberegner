@@ -13,6 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 import { logout } from "@/lib/auth";
 import type { CurrentUser } from "@/lib/auth";
 import { formatDKK } from "@shared/schema";
+import type { Blok } from "@shared/schema";
+import { BlokEditor, initBlokke } from "@/components/blok-editor";
+import { LayoutTemplate } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface EditorPageProps {
   initialOffer: Offer | null;
@@ -50,6 +54,18 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
   const { data: config } = useQuery<Config>({
     queryKey: ["/api/config"],
   });
+
+  const isV2 = offer.skabelon === "ev_erhverv_v2";
+
+  const { data: templateKonfig } = useQuery<{ blokke?: Blok[] }>({
+    queryKey: ["/api/admin/skabelon/ev_erhverv_v2"],
+    enabled: isV2,
+  });
+
+  const getV2Blokke = (): Blok[] => {
+    if (offer.v2?.blokke && offer.v2.blokke.length > 0) return offer.v2.blokke;
+    return initBlokke(templateKonfig?.blokke);
+  };
 
   const offerWithTotals = useMemo(() => {
     if (!products.length) return null;
@@ -424,6 +440,27 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
                 <Plus className="w-5 h-5 mr-2" />
                 Tilføj lokation
               </Button>
+
+              {isV2 && (
+                <Card className="mt-4">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <LayoutTemplate className="w-4 h-4" />
+                      Tilbudslayout
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Tilpas blokrækkefølgen og indholdet for dette tilbud. Ændringer gemmes med tilbuddet.
+                    </p>
+                    <BlokEditor
+                      blokke={getV2Blokke()}
+                      onChange={blokke => setOffer(o => ({ ...o, v2: { ...o.v2!, blokke } }))}
+                      allowImageUpload={true}
+                    />
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
         </main>
@@ -482,6 +519,24 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
                   <Plus className="w-5 h-5 mr-2" />
                   Tilføj lokation
                 </Button>
+
+                {isV2 && (
+                  <Card className="mt-2">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <LayoutTemplate className="w-4 h-4" />
+                        Tilbudslayout
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <BlokEditor
+                        blokke={getV2Blokke()}
+                        onChange={blokke => setOffer(o => ({ ...o, v2: { ...o.v2!, blokke } }))}
+                        allowImageUpload={true}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
               </>
             )}
           </div>

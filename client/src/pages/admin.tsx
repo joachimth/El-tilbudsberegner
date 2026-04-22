@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDKK } from "@shared/schema";
+import type { Blok } from "@shared/schema";
+import { BlokEditor, initBlokke } from "@/components/blok-editor";
 import { logout } from "@/lib/auth";
 import { queryClient as qc } from "@/lib/queryClient";
 import type { CurrentUser } from "@/lib/auth";
@@ -47,6 +49,8 @@ interface AdminProduct {
   tags?: string[] | null;
   billedeBase64?: string | null;
   producentLogoBase64?: string | null;
+  heeftBillede?: boolean;
+  heeftProducentLogo?: boolean;
   aktiv: boolean;
   sortering: number;
 }
@@ -830,6 +834,7 @@ interface V2SkabelonKonfig {
   kontaktperson: { navn: string; titel: string; telefon: string; email: string };
   cta: { overskrift: string; tekst: string };
   accentFarve: string;
+  blokke?: Blok[];
 }
 
 const defaultV2Konfig: V2SkabelonKonfig = {
@@ -851,6 +856,7 @@ function mergeV2Konfig(fetched: Partial<V2SkabelonKonfig>): V2SkabelonKonfig {
     kontaktperson: { ...defaultV2Konfig.kontaktperson, ...fetched.kontaktperson },
     cta: { ...defaultV2Konfig.cta, ...fetched.cta },
     accentFarve: fetched.accentFarve || defaultV2Konfig.accentFarve,
+    blokke: fetched.blokke,
   };
 }
 
@@ -868,11 +874,14 @@ function SkabelonerTab() {
   });
 
   const [form, setForm] = useState<V2SkabelonKonfig>(defaultV2Konfig);
+  const [blokke, setBlokke] = useState<Blok[]>([]);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     if (fetchedKonfig !== undefined && !initialized) {
-      setForm(mergeV2Konfig(fetchedKonfig));
+      const merged = mergeV2Konfig(fetchedKonfig);
+      setForm(merged);
+      setBlokke(merged.blokke && merged.blokke.length > 0 ? merged.blokke : initBlokke());
       setInitialized(true);
     }
   }, [fetchedKonfig, initialized]);
@@ -897,7 +906,7 @@ function SkabelonerTab() {
       const res = await fetch("/api/admin/skabelon/ev_erhverv_v2", {
         method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, blokke }),
       });
       if (!res.ok) throw new Error("Gem fejlede");
     },
@@ -1087,6 +1096,23 @@ function SkabelonerTab() {
           <p className="text-xs text-muted-foreground">
             Telefon og e-mail hentes automatisk fra firmaprofil-indstillingerne.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Blokopsætning */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <LayoutTemplate className="w-4 h-4" />
+            Blokopsætning
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground mb-4">
+            Disse blokke bruges som standard for alle nye EV Erhverv V2-tilbud.
+            Træk i <span className="font-mono">⋮⋮</span> for at flytte, brug øjet for at skjule, og slet for at fjerne.
+          </p>
+          <BlokEditor blokke={blokke} onChange={setBlokke} allowImageUpload={false} />
         </CardContent>
       </Card>
 
