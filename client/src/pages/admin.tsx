@@ -822,43 +822,14 @@ function IndstillingerTab() {
 
 // ── Skabeloner-tab ────────────────────────────────────────────────────────────
 
-interface V2Fordel {
-  ikon: string;
-  titel: string;
-  tekst: string;
-}
-
 interface V2SkabelonKonfig {
-  hero: { overskrift: string; underoverskrift: string };
-  fordele: V2Fordel[];
-  kontaktperson: { navn: string; titel: string; telefon: string; email: string };
-  cta: { overskrift: string; tekst: string };
   accentFarve: string;
   blokke?: Blok[];
 }
 
 const defaultV2Konfig: V2SkabelonKonfig = {
-  hero: { overskrift: "", underoverskrift: "" },
-  fordele: [
-    { ikon: "⚡", titel: "Hurtig levering", tekst: "Vi tilpasser tidsplanen til Jeres drift og sikrer minimal afbrydelse" },
-    { ikon: "🏅", titel: "Certificeret kvalitet", tekst: "Autoriserede el-installatører med dokumenteret erhvervserfaring" },
-    { ikon: "🛡️", titel: "Garanti & service", tekst: "Fuld garanti på arbejde og materialer samt efterfølgende support" },
-  ],
-  kontaktperson: { navn: "", titel: "", telefon: "", email: "" },
-  cta: { overskrift: "Klar til at komme i gang?", tekst: "Kontakt os i dag for at aftale næste skridt — vi er klar til at hjælpe." },
   accentFarve: "#1f4d6b",
 };
-
-function mergeV2Konfig(fetched: Partial<V2SkabelonKonfig>): V2SkabelonKonfig {
-  return {
-    hero: { ...defaultV2Konfig.hero, ...fetched.hero },
-    fordele: fetched.fordele && fetched.fordele.length > 0 ? fetched.fordele : defaultV2Konfig.fordele,
-    kontaktperson: { ...defaultV2Konfig.kontaktperson, ...fetched.kontaktperson },
-    cta: { ...defaultV2Konfig.cta, ...fetched.cta },
-    accentFarve: fetched.accentFarve || defaultV2Konfig.accentFarve,
-    blokke: fetched.blokke,
-  };
-}
 
 function SkabelonerTab() {
   const { toast } = useToast();
@@ -873,40 +844,24 @@ function SkabelonerTab() {
     },
   });
 
-  const [form, setForm] = useState<V2SkabelonKonfig>(defaultV2Konfig);
+  const [accentFarve, setAccentFarve] = useState(defaultV2Konfig.accentFarve);
   const [blokke, setBlokke] = useState<Blok[]>([]);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     if (fetchedKonfig !== undefined && !initialized) {
-      const merged = mergeV2Konfig(fetchedKonfig);
-      setForm(merged);
-      setBlokke(merged.blokke && merged.blokke.length > 0 ? merged.blokke : initBlokke());
+      setAccentFarve(fetchedKonfig.accentFarve || defaultV2Konfig.accentFarve);
+      setBlokke(fetchedKonfig.blokke && fetchedKonfig.blokke.length > 0 ? fetchedKonfig.blokke : initBlokke());
       setInitialized(true);
     }
   }, [fetchedKonfig, initialized]);
-
-  const setHero = (k: keyof V2SkabelonKonfig["hero"], v: string) =>
-    setForm(f => ({ ...f, hero: { ...f.hero, [k]: v } }));
-
-  const setFordel = (i: number, k: keyof V2Fordel, v: string) =>
-    setForm(f => {
-      const fordele = f.fordele.map((fd, idx) => idx === i ? { ...fd, [k]: v } : fd);
-      return { ...f, fordele };
-    });
-
-  const setKontakt = (k: keyof V2SkabelonKonfig["kontaktperson"], v: string) =>
-    setForm(f => ({ ...f, kontaktperson: { ...f.kontaktperson, [k]: v } }));
-
-  const setCta = (k: keyof V2SkabelonKonfig["cta"], v: string) =>
-    setForm(f => ({ ...f, cta: { ...f.cta, [k]: v } }));
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/admin/skabelon/ev_erhverv_v2", {
         method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, blokke }),
+        body: JSON.stringify({ accentFarve, blokke }),
       });
       if (!res.ok) throw new Error("Gem fejlede");
     },
@@ -922,8 +877,8 @@ function SkabelonerTab() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Tilpas standardindhold og udseende for <strong>EV Erhverv V2</strong>-skabelonen.
-        Disse værdier bruges som fallback, når et tilbud ikke har egne tilpassede data.
+        Konfigurér standardopsætningen for <strong>EV Erhverv V2</strong>-skabelonen.
+        Blokopsætningen nedarves til nye tilbud, som kan tilpasse dem yderligere.
       </p>
 
       {/* Farvetema */}
@@ -935,183 +890,47 @@ function SkabelonerTab() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Label>Primærfarve</Label>
-          <div className="flex items-center gap-3 mt-2">
+          <div className="flex items-center gap-3">
             <input
               type="color"
-              value={form.accentFarve}
-              onChange={e => setForm(f => ({ ...f, accentFarve: e.target.value }))}
+              value={accentFarve}
+              onChange={e => setAccentFarve(e.target.value)}
               className="w-12 h-12 rounded cursor-pointer border border-input p-0.5"
             />
             <Input
-              value={form.accentFarve}
-              onChange={e => setForm(f => ({ ...f, accentFarve: e.target.value }))}
+              value={accentFarve}
+              onChange={e => setAccentFarve(e.target.value)}
               className="w-36 font-mono h-11 text-base"
               placeholder="#1f4d6b"
               maxLength={7}
             />
             <button
               type="button"
-              onClick={() => setForm(f => ({ ...f, accentFarve: defaultV2Konfig.accentFarve }))}
+              onClick={() => setAccentFarve(defaultV2Konfig.accentFarve)}
               className="text-xs text-muted-foreground underline"
             >
               Nulstil
             </button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Bruges til header-båndet, sektions-streger, prisboks og CTA-baggrund.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Hero-sektion */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Hero-sektion</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label>Standardoverskrift</Label>
-            <Input
-              value={form.hero.overskrift}
-              onChange={e => setHero("overskrift", e.target.value)}
-              className="mt-2 h-11 text-base"
-              placeholder="Professionel el-løsning til din virksomhed"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Lad feltet være tomt for at bruge tilbuddets projektnavn.
-            </p>
-          </div>
-          <div>
-            <Label>Standardunderoverskrift</Label>
-            <Textarea
-              value={form.hero.underoverskrift}
-              onChange={e => setHero("underoverskrift", e.target.value)}
-              rows={2}
-              className="mt-2 text-base resize-none"
-              placeholder="Vi præsenterer hermed vores tilbud og ser frem til at levere den bedste løsning for Jer."
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Fordele-kort */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Fordele-kort (3 stk.)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {form.fordele.map((f, i) => (
-            <div key={i} className="space-y-3 pb-4 border-b last:border-b-0 last:pb-0">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kort {i + 1}</p>
-              <div className="grid grid-cols-[80px_1fr] gap-3">
-                <div>
-                  <Label>Ikon</Label>
-                  <Input
-                    value={f.ikon}
-                    onChange={e => setFordel(i, "ikon", e.target.value)}
-                    className="mt-2 h-11 text-xl text-center"
-                    placeholder="⚡"
-                    maxLength={4}
-                  />
-                </div>
-                <div>
-                  <Label>Titel</Label>
-                  <Input
-                    value={f.titel}
-                    onChange={e => setFordel(i, "titel", e.target.value)}
-                    className="mt-2 h-11 text-base"
-                    placeholder="Hurtig levering"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Beskrivelse</Label>
-                <Textarea
-                  value={f.tekst}
-                  onChange={e => setFordel(i, "tekst", e.target.value)}
-                  rows={2}
-                  className="mt-2 text-base resize-none"
-                  placeholder="Kort beskrivelse af fordelen..."
-                />
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* Kontaktperson */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Kontaktperson</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-xs text-muted-foreground -mt-1">
-            Udfyldes kun hvis tilbuddet ikke har en specifik kontaktperson tilknyttet.
-            Lad felterne stå tomme for at skjule sektionen.
-          </p>
-          {([
-            { k: "navn" as const, label: "Navn" },
-            { k: "titel" as const, label: "Titel / stilling" },
-            { k: "telefon" as const, label: "Telefon" },
-            { k: "email" as const, label: "E-mail" },
-          ] as const).map(({ k, label }) => (
-            <div key={k}>
-              <Label>{label}</Label>
-              <Input
-                value={form.kontaktperson[k]}
-                onChange={e => setKontakt(k, e.target.value)}
-                className="mt-2 h-11 text-base"
-              />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* CTA-blok */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">CTA-blok (opfordring til handling)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label>Overskrift</Label>
-            <Input
-              value={form.cta.overskrift}
-              onChange={e => setCta("overskrift", e.target.value)}
-              className="mt-2 h-11 text-base"
-              placeholder="Klar til at komme i gang?"
-            />
-          </div>
-          <div>
-            <Label>Tekst</Label>
-            <Textarea
-              value={form.cta.tekst}
-              onChange={e => setCta("tekst", e.target.value)}
-              rows={2}
-              className="mt-2 text-base resize-none"
-              placeholder="Kontakt os i dag for at aftale næste skridt..."
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Telefon og e-mail hentes automatisk fra firmaprofil-indstillingerne.
+            Primærfarve til header, sektionsstreger, prisboks og CTA.
           </p>
         </CardContent>
       </Card>
 
       {/* Blokopsætning */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <LayoutTemplate className="w-4 h-4" />
             Blokopsætning
           </CardTitle>
+          <p className="text-xs text-muted-foreground pt-1">
+            Træk i <GripIcon /> for at flytte. Klik på pilen for at redigere en bloks indhold.
+            Øjet skjuler en blok, skraldespanden fjerner den.
+          </p>
         </CardHeader>
         <CardContent>
-          <p className="text-xs text-muted-foreground mb-4">
-            Disse blokke bruges som standard for alle nye EV Erhverv V2-tilbud.
-            Træk i <span className="font-mono">⋮⋮</span> for at flytte, brug øjet for at skjule, og slet for at fjerne.
-          </p>
           <BlokEditor blokke={blokke} onChange={setBlokke} allowImageUpload={false} />
         </CardContent>
       </Card>
@@ -1123,6 +942,12 @@ function SkabelonerTab() {
     </div>
   );
 }
+
+function GripIcon() {
+  return <span className="inline-flex items-center text-muted-foreground mx-0.5">⠿</span>;
+}
+
+// ── Brugere-tab ────────────────────────────────────────────────────────────────
 
 // ── Brugere-tab ────────────────────────────────────────────────────────────────
 
