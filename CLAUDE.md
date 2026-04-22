@@ -188,7 +188,128 @@ Previously used Playwright + Chromium (`server/templates/pdf.ts`). Removed becau
 
 ## TODO / Roadmap
 
-*(Ingen åbne punkter — se Implementeret-sektionen nedenfor for færdige features.)*
+### Blok-baseret skabelon-editor med drag-and-drop
+
+Mål: V2-tilbud og V2-skabelon-defaults kan opbygges af frit redigerbare blokke — rækkefølgen kan ændres, blokke kan skjules, og brugeren kan indsætte egne billed- og tekstblokke.
+
+---
+
+#### Trin 1 — Blok-datamodel (`shared/schema.ts`)
+
+Definer `BlokType`-enum med alle gyldige bloktyper:
+
+```
+"hero" | "fordele" | "lokationer" | "prissummary" | "forbehold"
+| "cta" | "kontaktperson" | "custom_billede" | "custom_tekst"
+```
+
+Definer `BlokSchema`:
+```typescript
+{
+  id: string          // uuid — stabilt nøgle til React-keys og drag-and-drop
+  type: BlokType
+  skjult?: boolean    // false = vist, true = ikke renderet
+  data?: {            // kun relevant for custom_billede / custom_tekst
+    // custom_billede:
+    src?: string          // Base64 eller URL
+    billedeTekst?: string // billedtekst under billede
+    bredde?: "fuld" | "indhold"  // fuld = kanttil-kant, indhold = normal width
+    // custom_tekst:
+    overskrift?: string
+    tekst?: string
+    stil?: "normal" | "fremhævet"  // fremhævet = farvet baggrund
+  }
+}
+```
+
+Tilføj `blokke?: BlokSchema[]` til `v2DataSchema` (per-tilbud).
+Tilføj `blokke?: BlokSchema[]` til `V2TemplateKonfig` i `ev_erhverv_v2.ts` (skabelon-default).
+
+**Prioriteringsrækkefølge:** `offer.v2.blokke` → `templateKonfig.blokke` → hardcodet standardrækkefølge.
+
+**Standardrækkefølge:** `["hero", "fordele", "lokationer", "prissummary", "forbehold", "cta", "kontaktperson"]`
+
+`headerBand`, `docHoved` og `footer` er altid øverst/nederst og indgår ikke i blok-arrayet.
+
+---
+
+#### Trin 2 — Server-side renderer (`ev_erhverv_v2.ts`)
+
+Refaktorer `renderEvErhvervV2` til blok-baseret rendering:
+
+```typescript
+const blokke = resolveBlokke(v2.blokke, templateKonfig.blokke);
+
+function renderBlok(blok: Blok): string {
+  if (blok.skjult) return "";
+  switch (blok.type) {
+    case "hero":          return hero;
+    case "fordele":       return fordeleSektionHtml;
+    case "lokationer":    return lokationerHtml;
+    case "prissummary":   return prissummaryHtml;
+    case "forbehold":     return forbeholdHtml;
+    case "cta":           return ctaHtml;
+    case "kontaktperson": return kontaktHtml;
+    case "custom_billede": return renderCustomBillede(blok.data);
+    case "custom_tekst":   return renderCustomTekst(blok.data);
+  }
+}
+
+const body = blokke.map(renderBlok).join("\n");
+```
+
+Tilføj CSS for `custom_billede` og `custom_tekst` til `CSS`-strengen.
+
+---
+
+#### Trin 3 — Admin Skabeloner-fane: blok-editor for template-defaults
+
+Ny sektion i `SkabelonerTab` under eksisterende kort:
+
+**"Blokrækkefølge og synlighed"** — viser alle 7 bloktyper:
+- Hvert blok vises som en kort med: drag-håndtag (eller ↑/↓ pile), bloktype-navn, øje-ikon til skjul/vis
+- "Tilføj billed-blok" og "Tilføj tekstblok" knapper med inline editor (src/tekst/overskrift/stil)
+- Gemmes i `templateKonfig.blokke` via `PUT /api/admin/skabelon/ev_erhverv_v2`
+
+**UI-valg drag-and-drop:** Brug `@dnd-kit/core` + `@dnd-kit/sortable` (installér som dev-dependency). Alternativ: op/ned-pile uden nye dependencies (lavere risiko, anbefales for første implementation).
+
+---
+
+#### Trin 4 — Offer-editor: per-tilbud blok-tilpasning
+
+I `editor.tsx` (V2-specifik side): ny sektion "Tilbudslayout" med:
+- Samme blok-liste som i admin (men kun for det aktuelle tilbud)
+- Rækkefølge og skjul/vis gemmes i `offer.v2.blokke`
+- "Tilføj eget billede" — upload via eksisterende multer-infrastruktur, gemmes som Base64 i `blok.data.src`
+- "Tilføj tekstblok" — simpel Textarea + overskrift
+
+Blok-data sendes med tilbuddet ved gem og bruges direkte af rendereren.
+
+---
+
+#### Trin 5 — Upload-endpoint til brugerbilleder i blokke
+
+Nyt endpoint: `POST /api/offers/:id/blok-billede` (requireAuth):
+- Modtager billedfil, returnerer Base64-streng
+- Klienten gemmer Base64 direkte i `blok.data.src` på tilbuddet (ingen ny DB-kolonne)
+
+Alternativ (enklere): Upload sker client-side via `FileReader` direkte til Base64 — ingen server-endpoint nødvendig.
+
+---
+
+#### Estimeret rækkefølge
+
+| Trin | Omfang | Afhængigheder |
+|------|--------|---------------|
+| 1 — Datamodel | Lille | — |
+| 2 — Renderer | Mellem | Trin 1 |
+| 3 — Admin template editor | Mellem | Trin 1+2 |
+| 4 — Offer editor | Stor | Trin 1+2 |
+| 5 — Billede-upload | Lille | Trin 4 |
+
+Start med Trin 1+2 (ren backend, ingen UI). Herefter Trin 3 (template-niveau), til sidst Trin 4+5 (per-tilbud).
+
+---
 
 ---
 
