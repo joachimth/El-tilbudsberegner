@@ -66,6 +66,66 @@ export type Skabelon = "standard" | "ev_erhverv" | "energi_privat" | "modul_over
 
 export type PricingMode = "section_total" | "line_items" | "line_items_with_total" | "hidden_prices";
 
+export const blokTypeEnum = z.enum([
+  "hero",
+  "fordele",
+  "lokationer",
+  "prissummary",
+  "forbehold",
+  "cta",
+  "kontaktperson",
+  "custom_billede",
+  "custom_tekst",
+]);
+export type BlokType = z.infer<typeof blokTypeEnum>;
+
+export const blokDataSchema = z.object({
+  // hero
+  overskrift: z.string().optional(),
+  underoverskrift: z.string().optional(),
+  billedeUrl: z.string().optional(),
+  // fordele
+  kort: z.array(z.object({
+    ikon: z.string().optional(),
+    titel: z.string(),
+    tekst: z.string().optional(),
+  })).optional(),
+  // cta
+  ctaOverskrift: z.string().optional(),
+  ctaTekst: z.string().optional(),
+  // kontaktperson
+  navn: z.string().optional(),
+  titel: z.string().optional(),
+  telefon: z.string().optional(),
+  email: z.string().optional(),
+  // custom_billede
+  src: z.string().optional(),
+  billedeTekst: z.string().optional(),
+  bredde: z.enum(["fuld", "indhold"]).optional(),
+  // custom_tekst
+  tekst: z.string().optional(),
+  stil: z.enum(["normal", "fremhævet"]).optional(),
+});
+export type BlokData = z.infer<typeof blokDataSchema>;
+
+export const blokSchema = z.object({
+  id: z.string(),
+  type: blokTypeEnum,
+  skjult: z.boolean().optional(),
+  data: blokDataSchema.optional(),
+});
+export type Blok = z.infer<typeof blokSchema>;
+
+export const STANDARD_BLOK_RAEKKEFOELGE: BlokType[] = [
+  "hero",
+  "fordele",
+  "lokationer",
+  "prissummary",
+  "forbehold",
+  "cta",
+  "kontaktperson",
+];
+
 export const v2SektionSchema = z.object({
   lokationNavn: z.string(),
   billedeUrl: z.string().optional(),
@@ -102,6 +162,7 @@ export const v2DataSchema = z.object({
     email: z.string().optional(),
     billedeUrl: z.string().optional(),
   }).optional(),
+  blokke: z.array(blokSchema).optional(),
 });
 
 export type V2Data = z.infer<typeof v2DataSchema>;
