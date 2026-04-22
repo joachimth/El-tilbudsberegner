@@ -248,9 +248,48 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/products", requireAuth, async (_req, res) => {
     try {
       const products = await storage.getProducts();
-      res.json(products);
+      // Strip large Base64 blobs — images served via dedicated endpoints below
+      res.json(products.map(({ billedeBase64, producentLogoBase64, ...p }) => ({
+        ...p,
+        heeftBillede: !!billedeBase64,
+        heeftProducentLogo: !!producentLogoBase64,
+      })));
     } catch {
       res.status(500).json({ error: "Kunne ikke hente produkter" });
+    }
+  });
+
+  // ── Produkt-billeder (image serving) ─────────────────────────────────
+
+  app.get("/api/products/:id/billede", requireAuth, async (req, res) => {
+    try {
+      const products = await storage.getProducts();
+      const product = products.find(p => p.id === String(req.params.id));
+      if (!product?.billedeBase64) return res.status(404).end();
+      const match = product.billedeBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (!match) return res.status(500).end();
+      const buf = Buffer.from(match[2], "base64");
+      res.setHeader("Content-Type", match[1]);
+      res.setHeader("Cache-Control", "private, max-age=86400");
+      res.send(buf);
+    } catch {
+      res.status(500).end();
+    }
+  });
+
+  app.get("/api/products/:id/producentlogo", requireAuth, async (req, res) => {
+    try {
+      const products = await storage.getProducts();
+      const product = products.find(p => p.id === String(req.params.id));
+      if (!product?.producentLogoBase64) return res.status(404).end();
+      const match = product.producentLogoBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (!match) return res.status(500).end();
+      const buf = Buffer.from(match[2], "base64");
+      res.setHeader("Content-Type", match[1]);
+      res.setHeader("Cache-Control", "private, max-age=86400");
+      res.send(buf);
+    } catch {
+      res.status(500).end();
     }
   });
 

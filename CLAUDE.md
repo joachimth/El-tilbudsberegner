@@ -188,8 +188,7 @@ Previously used Playwright + Chromium (`server/templates/pdf.ts`). Removed becau
 
 ## TODO / Roadmap
 
-### Fremtidige optimeringer
-- Base64-billeder er store i DB — overvej filbaseret storage ved skalering
+*(Ingen åbne punkter — se Implementeret-sektionen nedenfor for færdige features.)*
 
 ---
 
@@ -215,6 +214,15 @@ Produkter har et `forbehold`-felt (newline-separeret tekst). `collectProduktForb
 `POST /api/admin/products/:id/billede` (multer → Base64 → `billede_base64`-kolonne på `produkter`). `DELETE` fjerner. Admin ProduktDialog: upload ved redigering + live preview. Admin liste: 40×40px thumbnail. V2-skabelon: 32×32px thumbnail inline i tabelrækker.
 
 `producentLogoBase64` — `producent_logo_base64 TEXT`-kolonne på `produkter`. `POST/DELETE /api/admin/products/:id/producentlogo`. Admin ProduktDialog: upload under produktbillede-sektionen. V2-skabelon: vises som diskret logo (max 14px højt) under produktnavn i alle prisvisningsmodes.
+
+### ✅ Optimeret billede-levering (Base64 stripped fra API)
+`GET /api/products` returnerer **ikke** `billedeBase64`/`producentLogoBase64` — kun `heeftBillede: boolean` og `heeftProducentLogo: boolean` som flag. Dette reducerer payload drastisk (op til MBs ved store kataloger med billeder).
+
+Dedikerede image-endpoints med HTTP caching (`Cache-Control: private, max-age=86400`):
+- `GET /api/products/:id/billede` — serverer produktbillede som binær billedfil (requireAuth)
+- `GET /api/products/:id/producentlogo` — serverer producentlogo (requireAuth)
+
+`GET /api/admin/products` og server-side rendereren (`renderEvErhvervV2`) bruger fortsat Base64 direkte fra databasen — ingen ændring i print/download-output.
 
 ### ✅ Tags til produkter
 `tags TEXT`-kolonne på `produkter` (komma-separeret, eksponeret som `string[]` i API). Admin ProduktDialog: chip-input (Enter/komma tilføjer, × fjerner). Tags vises som outline-badges i produktlisten.
