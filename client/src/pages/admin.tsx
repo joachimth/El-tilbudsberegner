@@ -18,7 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Plus, Pencil, Trash2, Package, Settings, Users, Save,
-  Calculator, Zap, ImagePlus, X, LayoutTemplate,
+  Calculator, Zap, ImagePlus, X, LayoutTemplate, MapPin,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDKK } from "@shared/schema";
@@ -822,20 +822,137 @@ function IndstillingerTab() {
 
 // ── Skabeloner-tab ────────────────────────────────────────────────────────────
 
-interface V2SkabelonKonfig {
-  accentFarve: string;
+interface SkabelonKonfig {
+  accentFarve?: string;
   blokke?: Blok[];
+  defaultLokationer?: Array<{ navn: string; linjer: Array<{ productId: string; antal: number }> }>;
 }
 
-const defaultV2Konfig: V2SkabelonKonfig = {
-  accentFarve: "#1f4d6b",
-};
+const DEFAULT_ACCENT = "#1f4d6b";
+
+// Mini-editor til standard lokationer i en template
+function DefaultLokationerEditor({
+  lokationer,
+  onChange,
+  products,
+}: {
+  lokationer: Array<{ navn: string; linjer: Array<{ productId: string; antal: number }> }>;
+  onChange: (loks: Array<{ navn: string; linjer: Array<{ productId: string; antal: number }> }>) => void;
+  products: AdminProduct[];
+}) {
+  const addLok = () => onChange([...lokationer, { navn: `Lokation ${lokationer.length + 1}`, linjer: [] }]);
+
+  const updateNavn = (i: number, navn: string) => {
+    const next = [...lokationer];
+    next[i] = { ...next[i], navn };
+    onChange(next);
+  };
+
+  const removeLok = (i: number) => onChange(lokationer.filter((_, idx) => idx !== i));
+
+  const addLinje = (i: number) => {
+    if (!products[0]) return;
+    const next = [...lokationer];
+    next[i] = { ...next[i], linjer: [...next[i].linjer, { productId: products[0].id, antal: 1 }] };
+    onChange(next);
+  };
+
+  const updateLinje = (li: number, ji: number, patch: Partial<{ productId: string; antal: number }>) => {
+    const next = [...lokationer];
+    const linjer = [...next[li].linjer];
+    linjer[ji] = { ...linjer[ji], ...patch };
+    next[li] = { ...next[li], linjer };
+    onChange(next);
+  };
+
+  const removeLinje = (li: number, ji: number) => {
+    const next = [...lokationer];
+    next[li] = { ...next[li], linjer: next[li].linjer.filter((_, idx) => idx !== ji) };
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-3">
+      {lokationer.map((lok, li) => (
+        <div key={li} className="border rounded-lg overflow-hidden">
+          {/* Lokation header */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/40 border-b">
+            <Input
+              value={lok.navn}
+              onChange={e => updateNavn(li, e.target.value)}
+              className="h-8 flex-1 font-medium bg-background"
+              placeholder="Lokation navn"
+            />
+            <button
+              onClick={() => removeLok(li)}
+              className="text-muted-foreground hover:text-destructive shrink-0 p-1"
+              title="Fjern lokation"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Linjer */}
+          <div className="px-3 py-2 space-y-2">
+            {lok.linjer.map((linje, ji) => (
+              <div key={ji} className="flex items-center gap-2">
+                <select
+                  value={linje.productId}
+                  onChange={e => updateLinje(li, ji, { productId: e.target.value })}
+                  className="flex-1 h-8 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  {products.map(p => (
+                    <option key={p.id} value={p.id}>{p.navn}</option>
+                  ))}
+                </select>
+                <Input
+                  type="number"
+                  min={1}
+                  value={linje.antal}
+                  onChange={e => updateLinje(li, ji, { antal: Math.max(1, parseInt(e.target.value) || 1) })}
+                  className="w-16 h-8 text-center"
+                />
+                <button
+                  onClick={() => removeLinje(li, ji)}
+                  className="text-muted-foreground hover:text-destructive shrink-0"
+                  title="Fjern produkt"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+
+            {lok.linjer.length === 0 && (
+              <p className="text-xs text-muted-foreground py-1">Ingen produkter — tilføj nedenfor.</p>
+            )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full h-7 text-xs"
+              onClick={() => addLinje(li)}
+              disabled={products.length === 0}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Tilføj produkt
+            </Button>
+          </div>
+        </div>
+      ))}
+
+      <Button variant="outline" size="sm" className="w-full" onClick={addLok}>
+        <Plus className="w-4 h-4 mr-2" />
+        Tilføj lokation
+      </Button>
+    </div>
+  );
+}
 
 function SkabelonerTab() {
   const { toast } = useToast();
   const qclient = useQueryClient();
 
-  const { data: fetchedKonfig, isLoading } = useQuery<Partial<V2SkabelonKonfig>>({
+  const { data: fetchedKonfig, isLoading } = useQuery<SkabelonKonfig>({
     queryKey: ["/api/admin/skabelon/ev_erhverv_v2"],
     queryFn: async () => {
       const res = await fetch("/api/admin/skabelon/ev_erhverv_v2", { credentials: "include" });
@@ -844,14 +961,25 @@ function SkabelonerTab() {
     },
   });
 
-  const [accentFarve, setAccentFarve] = useState(defaultV2Konfig.accentFarve);
+  const { data: products = [] } = useQuery<AdminProduct[]>({
+    queryKey: ["/api/admin/products"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/products", { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
+  });
+
+  const [accentFarve, setAccentFarve] = useState(DEFAULT_ACCENT);
   const [blokke, setBlokke] = useState<Blok[]>([]);
+  const [defaultLokationer, setDefaultLokationer] = useState<Array<{ navn: string; linjer: Array<{ productId: string; antal: number }> }>>([]);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     if (fetchedKonfig !== undefined && !initialized) {
-      setAccentFarve(fetchedKonfig.accentFarve || defaultV2Konfig.accentFarve);
+      setAccentFarve(fetchedKonfig.accentFarve || DEFAULT_ACCENT);
       setBlokke(fetchedKonfig.blokke && fetchedKonfig.blokke.length > 0 ? fetchedKonfig.blokke : initBlokke());
+      setDefaultLokationer(fetchedKonfig.defaultLokationer || []);
       setInitialized(true);
     }
   }, [fetchedKonfig, initialized]);
@@ -861,7 +989,7 @@ function SkabelonerTab() {
       const res = await fetch("/api/admin/skabelon/ev_erhverv_v2", {
         method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accentFarve, blokke }),
+        body: JSON.stringify({ accentFarve, blokke, defaultLokationer }),
       });
       if (!res.ok) throw new Error("Gem fejlede");
     },
@@ -878,7 +1006,7 @@ function SkabelonerTab() {
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         Konfigurér standardopsætningen for <strong>EV Erhverv V2</strong>-skabelonen.
-        Blokopsætningen nedarves til nye tilbud, som kan tilpasse dem yderligere.
+        Blokopsætningen og standard-lokationer nedarves til nye tilbud.
       </p>
 
       {/* Farvetema */}
@@ -906,7 +1034,7 @@ function SkabelonerTab() {
             />
             <button
               type="button"
-              onClick={() => setAccentFarve(defaultV2Konfig.accentFarve)}
+              onClick={() => setAccentFarve(DEFAULT_ACCENT)}
               className="text-xs text-muted-foreground underline"
             >
               Nulstil
@@ -915,6 +1043,27 @@ function SkabelonerTab() {
           <p className="text-xs text-muted-foreground mt-2">
             Primærfarve til header, sektionsstreger, prisboks og CTA.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Standard lokationer */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Package className="w-4 h-4" />
+            Standard lokationer &amp; produkter
+          </CardTitle>
+          <p className="text-xs text-muted-foreground pt-1">
+            Disse lokationer og produkter indsættes automatisk i nye tilbud med denne skabelon.
+            Brugeren kan redigere dem frit bagefter.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <DefaultLokationerEditor
+            lokationer={defaultLokationer}
+            onChange={setDefaultLokationer}
+            products={products}
+          />
         </CardContent>
       </Card>
 
@@ -946,8 +1095,6 @@ function SkabelonerTab() {
 function GripIcon() {
   return <span className="inline-flex items-center text-muted-foreground mx-0.5">⠿</span>;
 }
-
-// ── Brugere-tab ────────────────────────────────────────────────────────────────
 
 // ── Brugere-tab ────────────────────────────────────────────────────────────────
 

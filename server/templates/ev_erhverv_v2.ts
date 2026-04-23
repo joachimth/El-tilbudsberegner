@@ -1,4 +1,4 @@
-import type { Offer, Product, Config, V2Data } from "../../shared/schema.js";
+import type { Offer, Product, Config, V2Data, Lokation } from "../../shared/schema.js";
 import { STANDARD_BLOK_RAEKKEFOELGE } from "../../shared/schema.js";
 import type { Blok, BlokType, BlokData } from "../../shared/schema.js";
 
@@ -17,6 +17,7 @@ export interface V2TemplateKonfig {
   cta?: { overskrift?: string; tekst?: string };
   accentFarve?: string;
   blokke?: Blok[];
+  defaultLokationer?: Lokation[];
 }
 
 interface RenderContext {
