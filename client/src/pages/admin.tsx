@@ -18,7 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Plus, Pencil, Trash2, Package, Settings, Users, Save,
-  Calculator, Zap, ImagePlus, X, LayoutTemplate, MapPin,
+  Calculator, Zap, ImagePlus, X, LayoutTemplate, MapPin, ChevronDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDKK } from "@shared/schema";
@@ -952,15 +952,6 @@ function SkabelonerTab() {
   const { toast } = useToast();
   const qclient = useQueryClient();
 
-  const { data: fetchedKonfig, isLoading } = useQuery<SkabelonKonfig>({
-    queryKey: ["/api/admin/skabelon/ev_erhverv_v2"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/skabelon/ev_erhverv_v2", { credentials: "include" });
-      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
-      return res.json();
-    },
-  });
-
   const { data: products = [] } = useQuery<AdminProduct[]>({
     queryKey: ["/api/admin/products"],
     queryFn: async () => {
@@ -970,130 +961,182 @@ function SkabelonerTab() {
     },
   });
 
-  const [accentFarve, setAccentFarve] = useState(DEFAULT_ACCENT);
-  const [blokke, setBlokke] = useState<Blok[]>([]);
-  const [defaultLokationer, setDefaultLokationer] = useState<Array<{ navn: string; linjer: Array<{ productId: string; antal: number }> }>>([]);
-  const [initialized, setInitialized] = useState(false);
-
-  useEffect(() => {
-    if (fetchedKonfig !== undefined && !initialized) {
-      setAccentFarve(fetchedKonfig.accentFarve || DEFAULT_ACCENT);
-      setBlokke(fetchedKonfig.blokke && fetchedKonfig.blokke.length > 0 ? fetchedKonfig.blokke : initBlokke());
-      setDefaultLokationer(fetchedKonfig.defaultLokationer || []);
-      setInitialized(true);
-    }
-  }, [fetchedKonfig, initialized]);
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/admin/skabelon/ev_erhverv_v2", {
-        method: "PUT", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accentFarve, blokke, defaultLokationer }),
-      });
-      if (!res.ok) throw new Error("Gem fejlede");
-    },
-    onSuccess: () => {
-      qclient.invalidateQueries({ queryKey: ["/api/admin/skabelon/ev_erhverv_v2"] });
-      toast({ title: "Skabelon gemt" });
-    },
-    onError: () => toast({ title: "Fejl ved gem", variant: "destructive" }),
-  });
-
-  if (isLoading) return <p className="text-muted-foreground text-sm py-8 text-center">Indlæser...</p>;
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Konfigurér standardopsætningen for <strong>EV Erhverv V2</strong>-skabelonen.
-        Blokopsætningen og standard-lokationer nedarves til nye tilbud.
+        Konfigurér standard lokationer, produkter og udseende for hver skabelon.
+        Ændringer nedarves automatisk til nye tilbud med den pågældende skabelon.
       </p>
-
-      {/* Farvetema */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <LayoutTemplate className="w-4 h-4" />
-            Farvetema
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={accentFarve}
-              onChange={e => setAccentFarve(e.target.value)}
-              className="w-12 h-12 rounded cursor-pointer border border-input p-0.5"
-            />
-            <Input
-              value={accentFarve}
-              onChange={e => setAccentFarve(e.target.value)}
-              className="w-36 font-mono h-11 text-base"
-              placeholder="#1f4d6b"
-              maxLength={7}
-            />
-            <button
-              type="button"
-              onClick={() => setAccentFarve(DEFAULT_ACCENT)}
-              className="text-xs text-muted-foreground underline"
-            >
-              Nulstil
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Primærfarve til header, sektionsstreger, prisboks og CTA.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Standard lokationer */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Package className="w-4 h-4" />
-            Standard lokationer &amp; produkter
-          </CardTitle>
-          <p className="text-xs text-muted-foreground pt-1">
-            Disse lokationer og produkter indsættes automatisk i nye tilbud med denne skabelon.
-            Brugeren kan redigere dem frit bagefter.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <DefaultLokationerEditor
-            lokationer={defaultLokationer}
-            onChange={setDefaultLokationer}
-            products={products}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Blokopsætning */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <LayoutTemplate className="w-4 h-4" />
-            Blokopsætning
-          </CardTitle>
-          <p className="text-xs text-muted-foreground pt-1">
-            Træk i <GripIcon /> for at flytte. Klik på pilen for at redigere en bloks indhold.
-            Øjet skjuler en blok, skraldespanden fjerner den.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <BlokEditor blokke={blokke} onChange={setBlokke} allowImageUpload={false} />
-        </CardContent>
-      </Card>
-
-      <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="w-full h-12">
-        <Save className="w-4 h-4 mr-2" />
-        {saveMutation.isPending ? "Gemmer..." : "Gem skabelon-indstillinger"}
-      </Button>
+      {ALLE_SKABELONER.map(s => (
+        <SkabelonEditor
+          key={s.id}
+          skabelon={s.id}
+          navn={s.navn}
+          farveklasse={s.farveklasse}
+          isV2={s.id === "ev_erhverv_v2"}
+          products={products}
+          toast={toast}
+          qclient={qclient}
+        />
+      ))}
     </div>
   );
 }
 
+const ALLE_SKABELONER: { id: string; navn: string; farveklasse: string }[] = [
+  { id: "ev_erhverv_v2",  navn: "EV & Erhverv V2", farveklasse: "bg-[#1f4d6b]"  },
+  { id: "ev_erhverv",     navn: "EV & Erhverv",     farveklasse: "bg-blue-600"    },
+  { id: "energi_privat",  navn: "Energi & Privat",  farveklasse: "bg-emerald-600" },
+  { id: "modul_overslag", navn: "Modul Overslag",   farveklasse: "bg-violet-600"  },
+  { id: "standard",       navn: "Standard",         farveklasse: "bg-gray-500"    },
+];
+
+type DefaultLok = { navn: string; linjer: Array<{ productId: string; antal: number }> };
+
+function SkabelonEditor({
+  skabelon, navn, farveklasse, isV2, products, toast, qclient,
+}: {
+  skabelon: string;
+  navn: string;
+  farveklasse: string;
+  isV2: boolean;
+  products: AdminProduct[];
+  toast: ReturnType<typeof useToast>["toast"];
+  qclient: ReturnType<typeof useQueryClient>;
+}) {
+  const [open, setOpen] = useState(isV2);
+  const [initialized, setInitialized] = useState(false);
+  const [accentFarve, setAccentFarve] = useState(DEFAULT_ACCENT);
+  const [blokke, setBlokke] = useState<Blok[]>([]);
+  const [defaultLokationer, setDefaultLokationer] = useState<DefaultLok[]>([]);
+
+  const { data: konfig } = useQuery<SkabelonKonfig>({
+    queryKey: [`/api/admin/skabelon/${skabelon}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/skabelon/${skabelon}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}`);
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  useEffect(() => {
+    if (konfig !== undefined && !initialized) {
+      if (isV2) {
+        setAccentFarve(konfig.accentFarve || DEFAULT_ACCENT);
+        setBlokke(konfig.blokke && konfig.blokke.length > 0 ? konfig.blokke : initBlokke());
+      }
+      setDefaultLokationer(konfig.defaultLokationer || []);
+      setInitialized(true);
+    }
+  }, [konfig, initialized, isV2]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload: SkabelonKonfig = { defaultLokationer };
+      if (isV2) Object.assign(payload, { accentFarve, blokke });
+      const res = await fetch(`/api/admin/skabelon/${skabelon}`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Gem fejlede");
+    },
+    onSuccess: () => {
+      qclient.invalidateQueries({ queryKey: [`/api/admin/skabelon/${skabelon}`] });
+      toast({ title: `${navn} gemt` });
+    },
+    onError: () => toast({ title: "Fejl ved gem", variant: "destructive" }),
+  });
+
+  return (
+    <Card className="overflow-hidden">
+      <div className={`${farveklasse} h-1.5`} />
+      <CardHeader className="pb-2 pt-3 px-4">
+        <button
+          className="flex items-center justify-between w-full text-left"
+          onClick={() => setOpen(v => !v)}
+        >
+          <CardTitle className="text-base flex items-center gap-2">
+            <div className={`${farveklasse} w-5 h-5 rounded shrink-0`} />
+            {navn}
+          </CardTitle>
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      </CardHeader>
+
+      {open && (
+        <CardContent className="px-4 pb-4 space-y-5">
+
+          {isV2 && (
+            <div>
+              <Label className="text-sm font-semibold">Farvetema</Label>
+              <div className="flex items-center gap-3 mt-2">
+                <input
+                  type="color"
+                  value={accentFarve}
+                  onChange={e => setAccentFarve(e.target.value)}
+                  className="w-10 h-10 rounded cursor-pointer border border-input p-0.5"
+                />
+                <Input
+                  value={accentFarve}
+                  onChange={e => setAccentFarve(e.target.value)}
+                  className="w-32 font-mono h-9"
+                  placeholder="#1f4d6b"
+                  maxLength={7}
+                />
+                <button
+                  type="button"
+                  onClick={() => setAccentFarve(DEFAULT_ACCENT)}
+                  className="text-xs text-muted-foreground underline"
+                >
+                  Nulstil
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Primærfarve til header, sektionsstreger, prisboks og CTA.
+              </p>
+            </div>
+          )}
+
+          <div>
+            <Label className="text-sm font-semibold">Standard lokationer &amp; produkter</Label>
+            <p className="text-xs text-muted-foreground mt-0.5 mb-3">
+              Indsættes automatisk i nye tilbud med denne skabelon. Kan redigeres bagefter.
+            </p>
+            <DefaultLokationerEditor
+              lokationer={defaultLokationer}
+              onChange={setDefaultLokationer}
+              products={products}
+            />
+          </div>
+
+          {isV2 && (
+            <div>
+              <Label className="text-sm font-semibold">Blokopsætning</Label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-3">
+                Blokrækkefølge og -indhold der nedarves til nye V2-tilbud.
+              </p>
+              <BlokEditor blokke={blokke} onChange={setBlokke} allowImageUpload={false} />
+            </div>
+          )}
+
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            className="w-full h-10"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            {saveMutation.isPending ? "Gemmer..." : `Gem ${navn}`}
+          </Button>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
 function GripIcon() {
-  return <span className="inline-flex items-center text-muted-foreground mx-0.5">⠿</span>;
+  return <span className="inline-flex items-center text-muted-foreground mx-0.5">⠷</span>;
 }
 
 // ── Brugere-tab ────────────────────────────────────────────────────────────────
