@@ -18,7 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Plus, Pencil, Trash2, Package, Settings, Users, Save,
-  Calculator, Zap, ImagePlus, X, LayoutTemplate,
+  Calculator, Zap, ImagePlus, X, LayoutTemplate, MapPin, ChevronDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDKK } from "@shared/schema";
@@ -822,306 +822,321 @@ function IndstillingerTab() {
 
 // ── Skabeloner-tab ────────────────────────────────────────────────────────────
 
-interface V2Fordel {
-  ikon: string;
-  titel: string;
-  tekst: string;
-}
-
-interface V2SkabelonKonfig {
-  hero: { overskrift: string; underoverskrift: string };
-  fordele: V2Fordel[];
-  kontaktperson: { navn: string; titel: string; telefon: string; email: string };
-  cta: { overskrift: string; tekst: string };
-  accentFarve: string;
+interface SkabelonKonfig {
+  accentFarve?: string;
   blokke?: Blok[];
+  defaultLokationer?: Array<{ navn: string; linjer: Array<{ productId: string; antal: number }> }>;
 }
 
-const defaultV2Konfig: V2SkabelonKonfig = {
-  hero: { overskrift: "", underoverskrift: "" },
-  fordele: [
-    { ikon: "⚡", titel: "Hurtig levering", tekst: "Vi tilpasser tidsplanen til Jeres drift og sikrer minimal afbrydelse" },
-    { ikon: "🏅", titel: "Certificeret kvalitet", tekst: "Autoriserede el-installatører med dokumenteret erhvervserfaring" },
-    { ikon: "🛡️", titel: "Garanti & service", tekst: "Fuld garanti på arbejde og materialer samt efterfølgende support" },
-  ],
-  kontaktperson: { navn: "", titel: "", telefon: "", email: "" },
-  cta: { overskrift: "Klar til at komme i gang?", tekst: "Kontakt os i dag for at aftale næste skridt — vi er klar til at hjælpe." },
-  accentFarve: "#1f4d6b",
-};
+const DEFAULT_ACCENT = "#1f4d6b";
 
-function mergeV2Konfig(fetched: Partial<V2SkabelonKonfig>): V2SkabelonKonfig {
-  return {
-    hero: { ...defaultV2Konfig.hero, ...fetched.hero },
-    fordele: fetched.fordele && fetched.fordele.length > 0 ? fetched.fordele : defaultV2Konfig.fordele,
-    kontaktperson: { ...defaultV2Konfig.kontaktperson, ...fetched.kontaktperson },
-    cta: { ...defaultV2Konfig.cta, ...fetched.cta },
-    accentFarve: fetched.accentFarve || defaultV2Konfig.accentFarve,
-    blokke: fetched.blokke,
+// Mini-editor til standard lokationer i en template
+function DefaultLokationerEditor({
+  lokationer,
+  onChange,
+  products,
+}: {
+  lokationer: Array<{ navn: string; linjer: Array<{ productId: string; antal: number }> }>;
+  onChange: (loks: Array<{ navn: string; linjer: Array<{ productId: string; antal: number }> }>) => void;
+  products: AdminProduct[];
+}) {
+  const addLok = () => onChange([...lokationer, { navn: `Lokation ${lokationer.length + 1}`, linjer: [] }]);
+
+  const updateNavn = (i: number, navn: string) => {
+    const next = [...lokationer];
+    next[i] = { ...next[i], navn };
+    onChange(next);
   };
+
+  const removeLok = (i: number) => onChange(lokationer.filter((_, idx) => idx !== i));
+
+  const addLinje = (i: number) => {
+    if (!products[0]) return;
+    const next = [...lokationer];
+    next[i] = { ...next[i], linjer: [...next[i].linjer, { productId: products[0].id, antal: 1 }] };
+    onChange(next);
+  };
+
+  const updateLinje = (li: number, ji: number, patch: Partial<{ productId: string; antal: number }>) => {
+    const next = [...lokationer];
+    const linjer = [...next[li].linjer];
+    linjer[ji] = { ...linjer[ji], ...patch };
+    next[li] = { ...next[li], linjer };
+    onChange(next);
+  };
+
+  const removeLinje = (li: number, ji: number) => {
+    const next = [...lokationer];
+    next[li] = { ...next[li], linjer: next[li].linjer.filter((_, idx) => idx !== ji) };
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-3">
+      {lokationer.map((lok, li) => (
+        <div key={li} className="border rounded-lg overflow-hidden">
+          {/* Lokation header */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/40 border-b">
+            <Input
+              value={lok.navn}
+              onChange={e => updateNavn(li, e.target.value)}
+              className="h-8 flex-1 font-medium bg-background"
+              placeholder="Lokation navn"
+            />
+            <button
+              onClick={() => removeLok(li)}
+              className="text-muted-foreground hover:text-destructive shrink-0 p-1"
+              title="Fjern lokation"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Linjer */}
+          <div className="px-3 py-2 space-y-2">
+            {lok.linjer.map((linje, ji) => (
+              <div key={ji} className="flex items-center gap-2">
+                <select
+                  value={linje.productId}
+                  onChange={e => updateLinje(li, ji, { productId: e.target.value })}
+                  className="flex-1 h-8 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  {products.map(p => (
+                    <option key={p.id} value={p.id}>{p.navn}</option>
+                  ))}
+                </select>
+                <Input
+                  type="number"
+                  min={1}
+                  value={linje.antal}
+                  onChange={e => updateLinje(li, ji, { antal: Math.max(1, parseInt(e.target.value) || 1) })}
+                  className="w-16 h-8 text-center"
+                />
+                <button
+                  onClick={() => removeLinje(li, ji)}
+                  className="text-muted-foreground hover:text-destructive shrink-0"
+                  title="Fjern produkt"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+
+            {lok.linjer.length === 0 && (
+              <p className="text-xs text-muted-foreground py-1">Ingen produkter — tilføj nedenfor.</p>
+            )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full h-7 text-xs"
+              onClick={() => addLinje(li)}
+              disabled={products.length === 0}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Tilføj produkt
+            </Button>
+          </div>
+        </div>
+      ))}
+
+      <Button variant="outline" size="sm" className="w-full" onClick={addLok}>
+        <Plus className="w-4 h-4 mr-2" />
+        Tilføj lokation
+      </Button>
+    </div>
+  );
 }
 
 function SkabelonerTab() {
   const { toast } = useToast();
   const qclient = useQueryClient();
 
-  const { data: fetchedKonfig, isLoading } = useQuery<Partial<V2SkabelonKonfig>>({
-    queryKey: ["/api/admin/skabelon/ev_erhverv_v2"],
+  const { data: products = [] } = useQuery<AdminProduct[]>({
+    queryKey: ["/api/admin/products"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/skabelon/ev_erhverv_v2", { credentials: "include" });
+      const res = await fetch("/api/admin/products", { credentials: "include" });
       if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
       return res.json();
     },
   });
 
-  const [form, setForm] = useState<V2SkabelonKonfig>(defaultV2Konfig);
-  const [blokke, setBlokke] = useState<Blok[]>([]);
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Konfigurér standard lokationer, produkter og udseende for hver skabelon.
+        Ændringer nedarves automatisk til nye tilbud med den pågældende skabelon.
+      </p>
+      {ALLE_SKABELONER.map(s => (
+        <SkabelonEditor
+          key={s.id}
+          skabelon={s.id}
+          navn={s.navn}
+          farveklasse={s.farveklasse}
+          isV2={s.id === "ev_erhverv_v2"}
+          products={products}
+          toast={toast}
+          qclient={qclient}
+        />
+      ))}
+    </div>
+  );
+}
+
+const ALLE_SKABELONER: { id: string; navn: string; farveklasse: string }[] = [
+  { id: "ev_erhverv_v2",  navn: "EV & Erhverv V2", farveklasse: "bg-[#1f4d6b]"  },
+  { id: "ev_erhverv",     navn: "EV & Erhverv",     farveklasse: "bg-blue-600"    },
+  { id: "energi_privat",  navn: "Energi & Privat",  farveklasse: "bg-emerald-600" },
+  { id: "modul_overslag", navn: "Modul Overslag",   farveklasse: "bg-violet-600"  },
+  { id: "standard",       navn: "Standard",         farveklasse: "bg-gray-500"    },
+];
+
+type DefaultLok = { navn: string; linjer: Array<{ productId: string; antal: number }> };
+
+function SkabelonEditor({
+  skabelon, navn, farveklasse, isV2, products, toast, qclient,
+}: {
+  skabelon: string;
+  navn: string;
+  farveklasse: string;
+  isV2: boolean;
+  products: AdminProduct[];
+  toast: ReturnType<typeof useToast>["toast"];
+  qclient: ReturnType<typeof useQueryClient>;
+}) {
+  const [open, setOpen] = useState(isV2);
   const [initialized, setInitialized] = useState(false);
+  const [accentFarve, setAccentFarve] = useState(DEFAULT_ACCENT);
+  const [blokke, setBlokke] = useState<Blok[]>([]);
+  const [defaultLokationer, setDefaultLokationer] = useState<DefaultLok[]>([]);
+
+  const { data: konfig } = useQuery<SkabelonKonfig>({
+    queryKey: [`/api/admin/skabelon/${skabelon}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/skabelon/${skabelon}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}`);
+      return res.json();
+    },
+    enabled: open,
+  });
 
   useEffect(() => {
-    if (fetchedKonfig !== undefined && !initialized) {
-      const merged = mergeV2Konfig(fetchedKonfig);
-      setForm(merged);
-      setBlokke(merged.blokke && merged.blokke.length > 0 ? merged.blokke : initBlokke());
+    if (konfig !== undefined && !initialized) {
+      if (isV2) {
+        setAccentFarve(konfig.accentFarve || DEFAULT_ACCENT);
+        setBlokke(konfig.blokke && konfig.blokke.length > 0 ? konfig.blokke : initBlokke());
+      }
+      setDefaultLokationer(konfig.defaultLokationer || []);
       setInitialized(true);
     }
-  }, [fetchedKonfig, initialized]);
-
-  const setHero = (k: keyof V2SkabelonKonfig["hero"], v: string) =>
-    setForm(f => ({ ...f, hero: { ...f.hero, [k]: v } }));
-
-  const setFordel = (i: number, k: keyof V2Fordel, v: string) =>
-    setForm(f => {
-      const fordele = f.fordele.map((fd, idx) => idx === i ? { ...fd, [k]: v } : fd);
-      return { ...f, fordele };
-    });
-
-  const setKontakt = (k: keyof V2SkabelonKonfig["kontaktperson"], v: string) =>
-    setForm(f => ({ ...f, kontaktperson: { ...f.kontaktperson, [k]: v } }));
-
-  const setCta = (k: keyof V2SkabelonKonfig["cta"], v: string) =>
-    setForm(f => ({ ...f, cta: { ...f.cta, [k]: v } }));
+  }, [konfig, initialized, isV2]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/admin/skabelon/ev_erhverv_v2", {
+      const payload: SkabelonKonfig = { defaultLokationer };
+      if (isV2) Object.assign(payload, { accentFarve, blokke });
+      const res = await fetch(`/api/admin/skabelon/${skabelon}`, {
         method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, blokke }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Gem fejlede");
     },
     onSuccess: () => {
-      qclient.invalidateQueries({ queryKey: ["/api/admin/skabelon/ev_erhverv_v2"] });
-      toast({ title: "Skabelon gemt" });
+      qclient.invalidateQueries({ queryKey: [`/api/admin/skabelon/${skabelon}`] });
+      toast({ title: `${navn} gemt` });
     },
     onError: () => toast({ title: "Fejl ved gem", variant: "destructive" }),
   });
 
-  if (isLoading) return <p className="text-muted-foreground text-sm py-8 text-center">Indlæser...</p>;
-
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Tilpas standardindhold og udseende for <strong>EV Erhverv V2</strong>-skabelonen.
-        Disse værdier bruges som fallback, når et tilbud ikke har egne tilpassede data.
-      </p>
-
-      {/* Farvetema */}
-      <Card>
-        <CardHeader className="pb-3">
+    <Card className="overflow-hidden">
+      <div className={`${farveklasse} h-1.5`} />
+      <CardHeader className="pb-2 pt-3 px-4">
+        <button
+          className="flex items-center justify-between w-full text-left"
+          onClick={() => setOpen(v => !v)}
+        >
           <CardTitle className="text-base flex items-center gap-2">
-            <LayoutTemplate className="w-4 h-4" />
-            Farvetema
+            <div className={`${farveklasse} w-5 h-5 rounded shrink-0`} />
+            {navn}
           </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Label>Primærfarve</Label>
-          <div className="flex items-center gap-3 mt-2">
-            <input
-              type="color"
-              value={form.accentFarve}
-              onChange={e => setForm(f => ({ ...f, accentFarve: e.target.value }))}
-              className="w-12 h-12 rounded cursor-pointer border border-input p-0.5"
-            />
-            <Input
-              value={form.accentFarve}
-              onChange={e => setForm(f => ({ ...f, accentFarve: e.target.value }))}
-              className="w-36 font-mono h-11 text-base"
-              placeholder="#1f4d6b"
-              maxLength={7}
-            />
-            <button
-              type="button"
-              onClick={() => setForm(f => ({ ...f, accentFarve: defaultV2Konfig.accentFarve }))}
-              className="text-xs text-muted-foreground underline"
-            >
-              Nulstil
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Bruges til header-båndet, sektions-streger, prisboks og CTA-baggrund.
-          </p>
-        </CardContent>
-      </Card>
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      </CardHeader>
 
-      {/* Hero-sektion */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Hero-sektion</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label>Standardoverskrift</Label>
-            <Input
-              value={form.hero.overskrift}
-              onChange={e => setHero("overskrift", e.target.value)}
-              className="mt-2 h-11 text-base"
-              placeholder="Professionel el-løsning til din virksomhed"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Lad feltet være tomt for at bruge tilbuddets projektnavn.
-            </p>
-          </div>
-          <div>
-            <Label>Standardunderoverskrift</Label>
-            <Textarea
-              value={form.hero.underoverskrift}
-              onChange={e => setHero("underoverskrift", e.target.value)}
-              rows={2}
-              className="mt-2 text-base resize-none"
-              placeholder="Vi præsenterer hermed vores tilbud og ser frem til at levere den bedste løsning for Jer."
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {open && (
+        <CardContent className="px-4 pb-4 space-y-5">
 
-      {/* Fordele-kort */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Fordele-kort (3 stk.)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {form.fordele.map((f, i) => (
-            <div key={i} className="space-y-3 pb-4 border-b last:border-b-0 last:pb-0">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kort {i + 1}</p>
-              <div className="grid grid-cols-[80px_1fr] gap-3">
-                <div>
-                  <Label>Ikon</Label>
-                  <Input
-                    value={f.ikon}
-                    onChange={e => setFordel(i, "ikon", e.target.value)}
-                    className="mt-2 h-11 text-xl text-center"
-                    placeholder="⚡"
-                    maxLength={4}
-                  />
-                </div>
-                <div>
-                  <Label>Titel</Label>
-                  <Input
-                    value={f.titel}
-                    onChange={e => setFordel(i, "titel", e.target.value)}
-                    className="mt-2 h-11 text-base"
-                    placeholder="Hurtig levering"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Beskrivelse</Label>
-                <Textarea
-                  value={f.tekst}
-                  onChange={e => setFordel(i, "tekst", e.target.value)}
-                  rows={2}
-                  className="mt-2 text-base resize-none"
-                  placeholder="Kort beskrivelse af fordelen..."
+          {isV2 && (
+            <div>
+              <Label className="text-sm font-semibold">Farvetema</Label>
+              <div className="flex items-center gap-3 mt-2">
+                <input
+                  type="color"
+                  value={accentFarve}
+                  onChange={e => setAccentFarve(e.target.value)}
+                  className="w-10 h-10 rounded cursor-pointer border border-input p-0.5"
                 />
+                <Input
+                  value={accentFarve}
+                  onChange={e => setAccentFarve(e.target.value)}
+                  className="w-32 font-mono h-9"
+                  placeholder="#1f4d6b"
+                  maxLength={7}
+                />
+                <button
+                  type="button"
+                  onClick={() => setAccentFarve(DEFAULT_ACCENT)}
+                  className="text-xs text-muted-foreground underline"
+                >
+                  Nulstil
+                </button>
               </div>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Primærfarve til header, sektionsstreger, prisboks og CTA.
+              </p>
             </div>
-          ))}
-        </CardContent>
-      </Card>
+          )}
 
-      {/* Kontaktperson */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Kontaktperson</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-xs text-muted-foreground -mt-1">
-            Udfyldes kun hvis tilbuddet ikke har en specifik kontaktperson tilknyttet.
-            Lad felterne stå tomme for at skjule sektionen.
-          </p>
-          {([
-            { k: "navn" as const, label: "Navn" },
-            { k: "titel" as const, label: "Titel / stilling" },
-            { k: "telefon" as const, label: "Telefon" },
-            { k: "email" as const, label: "E-mail" },
-          ] as const).map(({ k, label }) => (
-            <div key={k}>
-              <Label>{label}</Label>
-              <Input
-                value={form.kontaktperson[k]}
-                onChange={e => setKontakt(k, e.target.value)}
-                className="mt-2 h-11 text-base"
-              />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* CTA-blok */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">CTA-blok (opfordring til handling)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
           <div>
-            <Label>Overskrift</Label>
-            <Input
-              value={form.cta.overskrift}
-              onChange={e => setCta("overskrift", e.target.value)}
-              className="mt-2 h-11 text-base"
-              placeholder="Klar til at komme i gang?"
+            <Label className="text-sm font-semibold">Standard lokationer &amp; produkter</Label>
+            <p className="text-xs text-muted-foreground mt-0.5 mb-3">
+              Indsættes automatisk i nye tilbud med denne skabelon. Kan redigeres bagefter.
+            </p>
+            <DefaultLokationerEditor
+              lokationer={defaultLokationer}
+              onChange={setDefaultLokationer}
+              products={products}
             />
           </div>
-          <div>
-            <Label>Tekst</Label>
-            <Textarea
-              value={form.cta.tekst}
-              onChange={e => setCta("tekst", e.target.value)}
-              rows={2}
-              className="mt-2 text-base resize-none"
-              placeholder="Kontakt os i dag for at aftale næste skridt..."
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Telefon og e-mail hentes automatisk fra firmaprofil-indstillingerne.
-          </p>
-        </CardContent>
-      </Card>
 
-      {/* Blokopsætning */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <LayoutTemplate className="w-4 h-4" />
-            Blokopsætning
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground mb-4">
-            Disse blokke bruges som standard for alle nye EV Erhverv V2-tilbud.
-            Træk i <span className="font-mono">⋮⋮</span> for at flytte, brug øjet for at skjule, og slet for at fjerne.
-          </p>
-          <BlokEditor blokke={blokke} onChange={setBlokke} allowImageUpload={false} />
-        </CardContent>
-      </Card>
+          {isV2 && (
+            <div>
+              <Label className="text-sm font-semibold">Blokopsætning</Label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-3">
+                Blokrækkefølge og -indhold der nedarves til nye V2-tilbud.
+              </p>
+              <BlokEditor blokke={blokke} onChange={setBlokke} allowImageUpload={false} />
+            </div>
+          )}
 
-      <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="w-full h-12">
-        <Save className="w-4 h-4 mr-2" />
-        {saveMutation.isPending ? "Gemmer..." : "Gem skabelon-indstillinger"}
-      </Button>
-    </div>
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            className="w-full h-10"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            {saveMutation.isPending ? "Gemmer..." : `Gem ${navn}`}
+          </Button>
+        </CardContent>
+      )}
+    </Card>
   );
+}
+
+function GripIcon() {
+  return <span className="inline-flex items-center text-muted-foreground mx-0.5">⠷</span>;
 }
 
 // ── Brugere-tab ────────────────────────────────────────────────────────────────

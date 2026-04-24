@@ -41,8 +41,18 @@ function Router() {
     navigate("/template-selector");
   }, [navigate]);
 
-  const handleTemplateSelected = useCallback((skabelon: Skabelon) => {
-    setCurrentOffer(createEmptyOffer(skabelon));
+  const handleTemplateSelected = useCallback(async (skabelon: Skabelon) => {
+    const offer = createEmptyOffer(skabelon);
+    try {
+      const res = await fetch(`/api/admin/skabelon/${skabelon}`, { credentials: "include" });
+      if (res.ok) {
+        const konfig = await res.json();
+        if (Array.isArray(konfig.defaultLokationer) && konfig.defaultLokationer.length > 0) {
+          offer.lokationer = konfig.defaultLokationer;
+        }
+      }
+    } catch {}
+    setCurrentOffer(offer);
     navigate("/editor");
   }, [navigate]);
 
