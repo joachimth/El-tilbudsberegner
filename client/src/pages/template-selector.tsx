@@ -1,77 +1,37 @@
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Zap, Leaf, Grid3X3, FileText, Star } from "lucide-react";
 import type { Skabelon } from "@shared/schema";
+import { SKABELON_REGISTRY } from "@shared/skabelon-registry";
 
 interface TemplateSelectorProps {
   onSelect: (skabelon: Skabelon) => void;
 }
 
-const SKABELONER: {
-  id: Skabelon;
-  icon: React.ElementType;
-  farve: string;
-  navn: string;
-  tagline: string;
-  beskrivelse: string;
-  tags: string[];
-  nyhed?: boolean;
-}[] = [
-  {
-    id: "ev_erhverv_v2",
-    icon: Zap,
-    farve: "bg-[#1f4d6b]",
-    navn: "EV & Erhverv V2",
-    tagline: "Professionelt lækker — PDF-klar",
-    beskrivelse:
-      "Fuldt designet premium-skabelon med hero-sektion, fordelskort, løsningskort med billeder, smart prisoversigt og CTA-blok. Optimeret til PDF-eksport.",
-    tags: ["EV-lader", "Erhverv", "Billeder", "PDF", "Premium"],
-    nyhed: true,
-  },
-  {
-    id: "ev_erhverv",
-    icon: Zap,
-    farve: "bg-blue-600",
-    navn: "EV & Erhverv",
-    tagline: "Pris først – hurtig beslutning",
-    beskrivelse:
-      "Kompakt format til erhvervskunder. Prisen er synlig med det samme. Produkttabel, tillægspriser og forbehold i klart overblik.",
-    tags: ["Ladebokse", "Elinstallation", "Erhverv"],
-  },
-  {
-    id: "energi_privat",
-    icon: Leaf,
-    farve: "bg-emerald-600",
-    navn: "Energi & Privat",
-    tagline: "Forklarende – tryghed i fokus",
-    beskrivelse:
-      "Opbygger tillid og forståelse. Løsningsoverblik, kundens ansvar og garantier beskrives grundigt. Prisen kommer til sidst.",
-    tags: ["Solceller", "Batterilager", "Varmepumpe", "VE-anlæg"],
-  },
-  {
-    id: "modul_overslag",
-    icon: Grid3X3,
-    farve: "bg-violet-600",
-    navn: "Modul Overslag",
-    tagline: "Modulopdelt – del-priser",
-    beskrivelse:
-      "Hvert arbejdsområde vises som et selvstændigt modul med beskrivelse og delpris. Velegnet til større projekter med etaper.",
-    tags: ["Etaper", "Flerfagligt", "Delpriser"],
-  },
-  {
-    id: "standard",
-    icon: FileText,
-    farve: "bg-gray-600",
-    navn: "Standard",
-    tagline: "Generelt tilbud",
-    beskrivelse:
-      "Klassisk tilbudsformat med lokationer og produktliste. Til hverdagsjobs og mindre opgaver.",
-    tags: ["Alsidig", "Hurtig"],
-  },
-];
+const IKONER: Record<string, React.ElementType> = {
+  ev_erhverv_v2: Zap,
+  ev_erhverv: Zap,
+  energi_privat: Leaf,
+  modul_overslag: Grid3X3,
+  standard: FileText,
+};
 
 export default function TemplateSelector({ onSelect }: TemplateSelectorProps) {
   const [, navigate] = useLocation();
+
+  const { data: skabelonerInfo = [] } = useQuery<{ id: string; skjult: boolean }[]>({
+    queryKey: ["/api/skabeloner"],
+    queryFn: async () => {
+      const res = await fetch("/api/skabeloner", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const skjulteIds = new Set(skabelonerInfo.filter(s => s.skjult).map(s => s.id));
+  const synlige = SKABELON_REGISTRY.filter(s => !skjulteIds.has(s.id));
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,26 +50,25 @@ export default function TemplateSelector({ onSelect }: TemplateSelectorProps) {
       <div className="max-w-4xl mx-auto px-4 py-10">
         <div className="text-center mb-10">
           <h2 className="text-2xl font-semibold mb-2">Hvad slags tilbud er det?</h2>
-          <p className="text-muted-foreground max-w-lg mx-auto">
+          <p className="text-muted-foreground max-lg mx-auto">
             Skabelonen bestemmer layout og fokus i det dokument kunden modtager. Du kan altid skifte til forhåndsvisning og se resultatet.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {SKABELONER.map((s) => {
-            const Icon = s.icon;
+          {synlige.map((s) => {
+            const Icon = IKONER[s.id] ?? FileText;
             return (
               <button
                 key={s.id}
                 onClick={() => onSelect(s.id)}
                 className={`group text-left border rounded-xl overflow-hidden bg-card hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${s.nyhed ? "ring-2 ring-[#1f4d6b]/30" : ""}`}
               >
-                {/* Farvet top-band */}
-                <div className={`${s.farve} h-2`} />
+                <div className={`${s.farveklasse} h-2`} />
 
                 <div className="p-5">
                   <div className="flex items-start gap-4 mb-3">
-                    <div className={`${s.farve} w-10 h-10 rounded-lg flex items-center justify-center shrink-0`}>
+                    <div className={`${s.farveklasse} w-10 h-10 rounded-lg flex items-center justify-center shrink-0`}>
                       <Icon className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">

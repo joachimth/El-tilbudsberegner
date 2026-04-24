@@ -7,6 +7,7 @@ import { requireAuth, requireAdmin, hashPassword } from "./auth";
 import { offerSchema } from "@shared/schema";
 import type { Offer } from "@shared/schema";
 import type { Product, Config } from "@shared/schema";
+import { SKABELON_REGISTRY } from "@shared/skabelon-registry";
 import { z } from "zod";
 import { renderEvErhvervV2 } from "./templates/ev_erhverv_v2.js";
 import { htmlToPdf } from "./templates/pdf.js";
@@ -584,6 +585,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Kunne ikke gemme indstillinger" });
+    }
+  });
+
+  // ── Skabeloner: offentlig liste (kræver auth) ─────────────────────────
+
+  app.get("/api/skabeloner", requireAuth, async (_req, res) => {
+    try {
+      const alleKonfig = await storage.getAllSkabelonKonfig();
+      const result = SKABELON_REGISTRY.map(s => ({
+        id: s.id,
+        skjult: !!(alleKonfig[s.id]?.skjult),
+      }));
+      res.json(result);
+    } catch {
+      res.status(500).json({ error: "Fejl ved hentning af skabeloner" });
     }
   });
 
