@@ -118,6 +118,18 @@ export class DbStorage {
     try { return JSON.parse(rows[0].værdi); } catch { return {}; }
   }
 
+  async getAllSkabelonKonfig(): Promise<Record<string, Record<string, any>>> {
+    const rows = await db.select().from(indstillinger);
+    const result: Record<string, Record<string, any>> = {};
+    for (const row of rows) {
+      if (row.nøgle.startsWith("skabelon_")) {
+        const id = row.nøgle.slice("skabelon_".length);
+        try { result[id] = JSON.parse(row.værdi); } catch { result[id] = {}; }
+      }
+    }
+    return result;
+  }
+
   async updateSkabelonKonfig(skabelon: string, konfig: Record<string, any>): Promise<void> {
     await this.updateSetting(`skabelon_${skabelon}`, JSON.stringify(konfig));
   }

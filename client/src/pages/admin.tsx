@@ -18,11 +18,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Plus, Pencil, Trash2, Package, Settings, Users, Save,
-  Calculator, Zap, ImagePlus, X, LayoutTemplate, MapPin, ChevronDown,
+  Calculator, Zap, ImagePlus, X, LayoutTemplate, MapPin, ChevronDown, EyeOff,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDKK } from "@shared/schema";
 import type { Blok } from "@shared/schema";
+import { SKABELON_REGISTRY } from "@shared/skabelon-registry";
 import { BlokEditor, initBlokke } from "@/components/blok-editor";
 import { logout } from "@/lib/auth";
 import { queryClient as qc } from "@/lib/queryClient";
@@ -826,6 +827,7 @@ interface SkabelonKonfig {
   accentFarve?: string;
   blokke?: Blok[];
   defaultLokationer?: Array<{ navn: string; linjer: Array<{ productId: string; antal: number }> }>;
+  skjult?: boolean;
 }
 
 const DEFAULT_ACCENT = "#1f4d6b";
@@ -961,19 +963,31 @@ function SkabelonerTab() {
     },
   });
 
+  const { data: skabelonerInfo = [] } = useQuery<{ id: string; skjult: boolean }[]>({
+    queryKey: ["/api/skabeloner"],
+    queryFn: async () => {
+      const res = await fetch("/api/skabeloner", { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}`);
+      return res.json();
+    },
+  });
+
+  const skjultMap = Object.fromEntries(skabelonerInfo.map(s => [s.id, s.skjult]));
+
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
         Konfigurér standard lokationer, produkter og udseende for hver skabelon.
         Ændringer nedarves automatisk til nye tilbud med den pågældende skabelon.
       </p>
-      {ALLE_SKABELONER.map(s => (
+      {SKABELON_REGISTRY.map(s => (
         <SkabelonEditor
           key={s.id}
           skabelon={s.id}
           navn={s.navn}
           farveklasse={s.farveklasse}
-          isV2={s.id === "ev_erhverv_v2"}
+          isV2={!!s.erV2}
+          initialSkjult={skjultMap[s.id] ?? false}
           products={products}
           toast={toast}
           qclient={qclient}
@@ -983,23 +997,16 @@ function SkabelonerTab() {
   );
 }
 
-const ALLE_SKABELONER: { id: string; navn: string; farveklasse: string }[] = [
-  { id: "ev_erhverv_v2",  navn: "EV & Erhverv V2", farveklasse: "bg-[#1f4d6b]"  },
-  { id: "ev_erhverv",     navn: "EV & Erhverv",     farveklasse: "bg-blue-600"    },
-  { id: "energi_privat",  navn: "Energi & Privat",  farveklasse: "bg-emerald-600" },
-  { id: "modul_overslag", navn: "Modul Overslag",   farveklasse: "bg-violet-600"  },
-  { id: "standard",       navn: "Standard",         farveklasse: "bg-gray-500"    },
-];
-
 type DefaultLok = { navn: string; linjer: Array<{ productId: string; antal: number }> };
 
 function SkabelonEditor({
-  skabelon, navn, farveklasse, isV2, products, toast, qclient,
+  skabelon, navn, farveklasse, isV2, initialSkjult, products, toast, qclient,
 }: {
   skabelon: string;
   navn: string;
   farveklasse: string;
   isV2: boolean;
+  initialSkjult: boolean;
   products: AdminProduct[];
   toast: ReturnType<typeof useToast>["toast"];
   qclient: ReturnType<typeof useQueryClient>;
@@ -1009,6 +1016,7 @@ function SkabelonEditor({
   const [accentFarve, setAccentFarve] = useState(DEFAULT_ACCENT);
   const [blokke, setBlokke] = useState<Blok[]>([]);
   const [defaultLokationer, setDefaultLokationer] = useState<DefaultLok[]>([]);
+  const [skjult, setSkjult] = useState(initialSkjult);
 
   const { data: konfig } = useQuery<SkabelonKonfig>({
     queryKey: [`/api/admin/skabelon/${skabelon}`],
@@ -1027,13 +1035,14 @@ function SkabelonEditor({
         setBlokke(konfig.blokke && konfig.blokke.length > 0 ? konfig.blokke : initBlokke());
       }
       setDefaultLokationer(konfig.defaultLokationer || []);
+      setSkjult(konfig.skjult ?? initialSkjult);
       setInitialized(true);
     }
-  }, [konfig, initialized, isV2]);
+  }, [konfig, initialized, isV2, initialSkjult]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload: SkabelonKonfig = { defaultLokationer };
+      const payload: SkabelonKonfig = { defaultLokationer, skjult };
       if (isV2) Object.assign(payload, { accentFarve, blokke });
       const res = await fetch(`/api/admin/skabelon/${skabelon}`, {
         method: "PUT", credentials: "include",
@@ -1044,6 +1053,7 @@ function SkabelonEditor({
     },
     onSuccess: () => {
       qclient.invalidateQueries({ queryKey: [`/api/admin/skabelon/${skabelon}`] });
+      qclient.invalidateQueries({ queryKey: ["/api/skabeloner"] });
       toast({ title: `${navn} gemt` });
     },
     onError: () => toast({ title: "Fejl ved gem", variant: "destructive" }),
@@ -1053,16 +1063,25 @@ function SkabelonEditor({
     <Card className="overflow-hidden">
       <div className={`${farveklasse} h-1.5`} />
       <CardHeader className="pb-2 pt-3 px-4">
-        <button
-          className="flex items-center justify-between w-full text-left"
-          onClick={() => setOpen(v => !v)}
-        >
-          <CardTitle className="text-base flex items-center gap-2">
+        <div className="flex items-center justify-between w-full gap-2">
+          <button
+            className="flex items-center gap-2 flex-1 text-left min-w-0"
+            onClick={() => setOpen(v => !v)}
+          >
             <div className={`${farveklasse} w-5 h-5 rounded shrink-0`} />
-            {navn}
-          </CardTitle>
-          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
-        </button>
+            <CardTitle className="text-base">{navn}</CardTitle>
+            {skjult && (
+              <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                <EyeOff className="w-3 h-3" />
+                Skjult
+              </span>
+            )}
+          </button>
+          <ChevronDown
+            className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
+            onClick={() => setOpen(v => !v)}
+          />
+        </div>
       </CardHeader>
 
       {open && (
@@ -1120,6 +1139,16 @@ function SkabelonEditor({
               <BlokEditor blokke={blokke} onChange={setBlokke} allowImageUpload={false} />
             </div>
           )}
+
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div>
+              <Label className="text-sm font-semibold">Synlig for brugere</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Skjulte skabeloner vises ikke ved oprettelse af nyt tilbud.
+              </p>
+            </div>
+            <Switch checked={!skjult} onCheckedChange={v => setSkjult(!v)} />
+          </div>
 
           <Button
             onClick={() => saveMutation.mutate()}
