@@ -7,9 +7,10 @@ import { formatDKK } from "@shared/schema";
 interface SummaryPanelProps {
   offerWithTotals: OfferWithTotals | null;
   showMoms: boolean;
+  momsprocent?: number;
 }
 
-export function SummaryPanel({ offerWithTotals, showMoms }: SummaryPanelProps) {
+export function SummaryPanel({ offerWithTotals, showMoms, momsprocent = 25 }: SummaryPanelProps) {
   if (!offerWithTotals) {
     return (
       <Card>
@@ -88,7 +89,7 @@ export function SummaryPanel({ offerWithTotals, showMoms }: SummaryPanelProps) {
               {showMoms && (
                 <>
                   <div className="flex items-center justify-between text-muted-foreground">
-                    <span>Moms (25%)</span>
+                    <span>Moms ({momsprocent}%)</span>
                     <span data-testid="text-summary-moms">{formatDKK(moms)}</span>
                   </div>
                   

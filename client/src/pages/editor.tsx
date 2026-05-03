@@ -58,7 +58,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
   const isV2 = offer.skabelon === "ev_erhverv_v2";
 
   const { data: templateKonfig } = useQuery<{ blokke?: Blok[] }>({
-    queryKey: ["/api/admin/skabelon/ev_erhverv_v2"],
+    queryKey: ["/api/skabelon/ev_erhverv_v2/defaults"],
     enabled: isV2,
   });
 
@@ -469,6 +469,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
           <SummaryPanel
             offerWithTotals={offerWithTotals}
             showMoms={offer.moms.visInkl}
+            momsprocent={config?.momsprocent}
           />
         </aside>
       </div>
@@ -565,6 +566,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
             <SummaryPanel
               offerWithTotals={offerWithTotals}
               showMoms={offer.moms.visInkl}
+              momsprocent={config?.momsprocent}
             />
           </div>
         )}

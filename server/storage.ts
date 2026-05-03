@@ -182,7 +182,10 @@ export class DbStorage {
           oprettetAt: tilbud.oprettetAt,
           opdateretAt: tilbud.opdateretAt,
           brugerId: tilbud.brugerId,
-        }).from(tilbud).orderBy(desc(tilbud.opdateretAt))
+          brugerNavn: brugere.brugernavn,
+        }).from(tilbud)
+          .leftJoin(brugere, eq(tilbud.brugerId, brugere.id))
+          .orderBy(desc(tilbud.opdateretAt))
       : await db.select({
           id: tilbud.id,
           titel: tilbud.titel,
@@ -190,7 +193,11 @@ export class DbStorage {
           oprettetAt: tilbud.oprettetAt,
           opdateretAt: tilbud.opdateretAt,
           brugerId: tilbud.brugerId,
-        }).from(tilbud).where(eq(tilbud.brugerId, userId!)).orderBy(desc(tilbud.opdateretAt));
+          brugerNavn: brugere.brugernavn,
+        }).from(tilbud)
+          .leftJoin(brugere, eq(tilbud.brugerId, brugere.id))
+          .where(eq(tilbud.brugerId, userId!))
+          .orderBy(desc(tilbud.opdateretAt));
     return rows.map(r => ({ ...r, id: String(r.id) }));
   }
 
