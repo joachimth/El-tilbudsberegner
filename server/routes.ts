@@ -608,7 +608,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/skabelon/:skabelon/defaults", requireAuth, async (req, res) => {
     try {
       const konfig = await storage.getSkabelonKonfig(String(req.params.skabelon));
-      res.json({ defaultLokationer: (konfig.defaultLokationer as any[]) ?? [] });
+      res.json({
+        defaultLokationer: (konfig.defaultLokationer as any[]) ?? [],
+        blokke: (konfig.blokke as any[] | undefined) ?? undefined,
+      });
     } catch {
       res.status(500).json({ error: "Kunne ikke hente skabelon-defaults" });
     }

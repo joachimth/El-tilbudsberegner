@@ -707,8 +707,8 @@ export function renderEvErhvervV2(
         : `<div class="firma-navn">${esc(config.firmanavn)}</div>`
       }
       <div class="firma-info">
-        ${[config.adresse, config.postnrBy, config.cvr && `CVR: ${esc(config.cvr)}`]
-          .filter(Boolean).map(esc).join("<br>")}
+        ${[config.adresse, config.postnrBy, config.cvr ? `CVR: ${config.cvr}` : null]
+          .filter(Boolean).map(s => esc(s!)).join("<br>")}
       </div>
     </div>
     <div class="kunde-info">

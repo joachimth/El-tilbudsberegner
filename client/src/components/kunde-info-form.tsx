@@ -179,7 +179,7 @@ export function KundeInfoForm({
             />
           </div>
           <p className="text-sm text-muted-foreground mt-2">
-            Alle priser vises ekskl. moms. Moms (25%) beregnes automatisk.
+            Alle priser vises ekskl. moms. Moms ({config?.momsprocent ?? 25}%) beregnes automatisk.
           </p>
         </CardContent>
       </Card>
