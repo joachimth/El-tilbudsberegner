@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ function DocHoved({ offer, config }: { offer: Offer; config: Config }) {
         {offer.kunde.navn && <div><strong>Kunde:</strong> {offer.kunde.navn}</div>}
         {offer.kunde.adresse && <div><strong>Adresse:</strong> {offer.kunde.adresse}</div>}
         {offer.meta.dato && <div><strong>Dato:</strong> {fmtDate(offer.meta.dato)}</div>}
-        {offer.meta.tilbudNr && <div><strong>Reference:</strong> {offer.meta.tilbudNr}</div>}
+        {offer.meta.tilbudNr && <div><strong>Tilbudsnr.:</strong> {offer.meta.tilbudNr}</div>}
         {offer.meta.reference && <div><strong>Reference:</strong> {offer.meta.reference}</div>}
       </div>
     </div>
@@ -371,6 +371,7 @@ function PreviewModulOverslag({ owt, config }: { owt: OfferWithTotals; config: C
 function PreviewStandard({ owt, config }: { owt: OfferWithTotals; config: Config }) {
   const { offer, lokationerWithTotals, total, moms, totalInklMoms } = owt;
   const visInkl = offer.moms.visInkl;
+  const momsprocent = config.momsprocent ?? 25;
 
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden print:shadow-none print:rounded-none">
@@ -431,7 +432,7 @@ function PreviewStandard({ owt, config }: { owt: OfferWithTotals; config: Config
               {visInkl && (
                 <>
                   <div className="flex justify-between text-gray-600">
-                    <span>Moms (25%):</span>
+                    <span>Moms ({momsprocent}%):</span>
                     <span>{formatDKK(moms)}</span>
                   </div>
                   <div className="flex justify-between text-base font-bold pt-2 border-t">
@@ -483,10 +484,11 @@ function PreviewEvErhvervV2({ offer, iframeRef }: { offer: Offer; iframeRef: Rea
   const [htmlUrl, setHtmlUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useMemo(() => {
+  useEffect(() => {
     let blobUrl: string | null = null;
     let cancelled = false;
     setLoading(true);
+    setHtmlUrl(null);
     fetch("/api/html-export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

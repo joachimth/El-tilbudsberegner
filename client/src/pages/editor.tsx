@@ -455,7 +455,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
                     </p>
                     <BlokEditor
                       blokke={getV2Blokke()}
-                      onChange={blokke => setOffer(o => ({ ...o, v2: { ...o.v2!, blokke } }))}
+                      onChange={blokke => setOffer(o => ({ ...o, v2: { globalPricingMode: "line_items", sektioner: [], ...o.v2, blokke } }))}
                       allowImageUpload={true}
                     />
                   </CardContent>
@@ -503,6 +503,8 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
                     products={products}
                     lokationIndex={index}
                     totalLokationer={offer.lokationer.length}
+                    skabelon={offer.skabelon}
+                    kategoriFilter={config?.skabelonKategorier?.[offer.skabelon] ?? []}
                     onChange={lok => handleLokationChange(index, lok)}
                     onDelete={() => handleDeleteLokation(index)}
                     onMoveUp={() => handleMoveLokation(index, "up")}
@@ -531,7 +533,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
                     <CardContent>
                       <BlokEditor
                         blokke={getV2Blokke()}
-                        onChange={blokke => setOffer(o => ({ ...o, v2: { ...o.v2!, blokke } }))}
+                        onChange={blokke => setOffer(o => ({ ...o, v2: { globalPricingMode: "line_items", sektioner: [], ...o.v2, blokke } }))}
                         allowImageUpload={true}
                       />
                     </CardContent>

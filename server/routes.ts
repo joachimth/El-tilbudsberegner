@@ -603,6 +603,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Skabelon-defaults: tilgængeligt for alle auth'd brugere ──────────────
+
+  app.get("/api/skabelon/:skabelon/defaults", requireAuth, async (req, res) => {
+    try {
+      const konfig = await storage.getSkabelonKonfig(String(req.params.skabelon));
+      res.json({ defaultLokationer: (konfig.defaultLokationer as any[]) ?? [] });
+    } catch {
+      res.status(500).json({ error: "Kunne ikke hente skabelon-defaults" });
+    }
+  });
+
   // ── Admin: Skabelon-konfiguration ─────────────────────────────────────
 
   app.get("/api/admin/skabelon/:skabelon", requireAdmin, async (req, res) => {

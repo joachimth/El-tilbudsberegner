@@ -44,11 +44,11 @@ function Router() {
   const handleTemplateSelected = useCallback(async (skabelon: Skabelon) => {
     const offer = createEmptyOffer(skabelon);
     try {
-      const res = await fetch(`/api/admin/skabelon/${skabelon}`, { credentials: "include" });
+      const res = await fetch(`/api/skabelon/${skabelon}/defaults`, { credentials: "include" });
       if (res.ok) {
-        const konfig = await res.json();
-        if (Array.isArray(konfig.defaultLokationer) && konfig.defaultLokationer.length > 0) {
-          offer.lokationer = konfig.defaultLokationer;
+        const data = await res.json();
+        if (Array.isArray(data.defaultLokationer) && data.defaultLokationer.length > 0) {
+          offer.lokationer = data.defaultLokationer;
         }
       }
     } catch {}
