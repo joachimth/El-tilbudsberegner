@@ -24,7 +24,7 @@ export default function TemplateSelector({ onSelect }: TemplateSelectorProps) {
     queryKey: ["/api/skabeloner"],
     queryFn: async () => {
       const res = await fetch("/api/skabeloner", { credentials: "include" });
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error(`${res.status}`);
       return res.json();
     },
     staleTime: 30 * 1000,

@@ -47,7 +47,7 @@ export default function Home({ currentUser, onLoadOffer, onNewOffer }: HomeProps
     queryKey: ["/api/offers"],
     queryFn: async () => {
       const res = await fetch("/api/offers", { credentials: "include" });
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
       return res.json();
     },
   });

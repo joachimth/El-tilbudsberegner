@@ -14,7 +14,7 @@ import { htmlToPdf } from "./templates/pdf.js";
 
 // ── HTML-generator (skabelon-specifik) ───────────────────────────────────────
 
-function genererHtml(offer: Offer, products: Product[], config: Config): string {
+async function genererHtml(offer: Offer, products: Product[], config: Config): Promise<string> {
   const pm = new Map(products.map(p => [p.id, p]));
   const fmtDKK = (n: number) =>
     new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK" }).format(n);
@@ -102,7 +102,8 @@ function genererHtml(offer: Offer, products: Product[], config: Config): string 
 
   // ── EV_ERHVERV_V2 ──
   if (offer.skabelon === "ev_erhverv_v2") {
-    return renderEvErhvervV2(offer, products, config, offer.v2);
+    const templateKonfig = await storage.getSkabelonKonfig("ev_erhverv_v2");
+    return renderEvErhvervV2(offer, products, config, offer.v2, templateKonfig);
   }
 
   // ── EV_ERHVERV ──
@@ -384,7 +385,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const templateKonfig = await storage.getSkabelonKonfig("ev_erhverv_v2");
         html = renderEvErhvervV2(offer, products, config, offer.v2, templateKonfig);
       } else {
-        html = genererHtml(offer, products, config);
+        html = await genererHtml(offer, products, config);
       }
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="tilbud-${offer.meta.tilbudNr || "draft"}.html"`);
@@ -406,7 +407,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const offer = parseResult.data;
       const products = await storage.getProducts();
       const config = await storage.getConfig();
-      const html = genererHtml(offer, products, config);
+      const html = await genererHtml(offer, products, config);
       const pdf = await htmlToPdf(html);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="tilbud-${offer.meta.tilbudNr || "draft"}.pdf"`);

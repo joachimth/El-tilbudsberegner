@@ -8,6 +8,7 @@ import { calculateOfferTotals, collectProduktForbehold } from "@/lib/offer-utils
 import type { Offer, Product, Config } from "@/lib/types";
 import type { OfferWithTotals } from "@/lib/types";
 import { formatDKK } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 interface PreviewPageProps {
   offer: Offer | null;
@@ -537,6 +538,7 @@ function PreviewEvErhvervV2({ offer, iframeRef }: { offer: Offer; iframeRef: Rea
 
 export default function PreviewPage({ offer }: PreviewPageProps) {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const v2IframeRef = useRef<HTMLIFrameElement>(null) as React.RefObject<HTMLIFrameElement>;
 
   const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
@@ -561,7 +563,7 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
         credentials: "include",
         body: JSON.stringify(offer),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(`HTML-eksport fejlede (${res.status})`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -571,8 +573,12 @@ export default function PreviewPage({ offer }: PreviewPageProps) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch {
-      console.error("HTML export failed");
+    } catch (err) {
+      toast({
+        title: "Eksport fejlede",
+        description: err instanceof Error ? err.message : "Kunne ikke downloade HTML-filen.",
+        variant: "destructive",
+      });
     }
   };
 
