@@ -62,10 +62,10 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
     enabled: isV2,
   });
 
-  const getV2Blokke = (): Blok[] => {
+  const v2Blokke = useMemo((): Blok[] => {
     if (offer.v2?.blokke && offer.v2.blokke.length > 0) return offer.v2.blokke;
     return initBlokke(templateKonfig?.blokke);
-  };
+  }, [offer.v2?.blokke, templateKonfig?.blokke]);
 
   const offerWithTotals = useMemo(() => {
     if (!products.length) return null;
@@ -454,7 +454,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
                       Tilpas blokrækkefølgen og indholdet for dette tilbud. Ændringer gemmes med tilbuddet.
                     </p>
                     <BlokEditor
-                      blokke={getV2Blokke()}
+                      blokke={v2Blokke}
                       onChange={blokke => setOffer(o => ({ ...o, v2: { globalPricingMode: "line_items", sektioner: [], ...o.v2, blokke } }))}
                       allowImageUpload={true}
                     />
@@ -533,7 +533,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
                     </CardHeader>
                     <CardContent>
                       <BlokEditor
-                        blokke={getV2Blokke()}
+                        blokke={v2Blokke}
                         onChange={blokke => setOffer(o => ({ ...o, v2: { globalPricingMode: "line_items", sektioner: [], ...o.v2, blokke } }))}
                         allowImageUpload={true}
                       />

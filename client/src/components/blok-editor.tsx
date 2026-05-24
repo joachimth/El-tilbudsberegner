@@ -218,7 +218,7 @@ function BlokInlineEditor({
 
     case "kontaktperson":
       return (
-        <div className="pt-3 border-t mt-3">
+        <div className="pt-3 border-t mt-3 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Navn</Label>
@@ -237,6 +237,39 @@ function BlokInlineEditor({
               <Input value={d.email || ""} onChange={e => set({ email: e.target.value })} className="mt-1" />
             </div>
           </div>
+          {allowImageUpload && (
+            <div>
+              <Label className="text-xs">Profilbillede (valgfri)</Label>
+              <div className="mt-1 flex items-center gap-3">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = ev => set({ billedeUrl: ev.target?.result as string });
+                    reader.readAsDataURL(file);
+                    e.target.value = "";
+                  }}
+                />
+                <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+                  <Image className="w-4 h-4 mr-2" />
+                  {d.billedeUrl ? "Skift billede" : "Vælg billede"}
+                </Button>
+                {d.billedeUrl && (
+                  <button onClick={() => set({ billedeUrl: undefined })} className="text-xs text-muted-foreground hover:text-destructive">
+                    Fjern
+                  </button>
+                )}
+              </div>
+              {d.billedeUrl && (
+                <img src={d.billedeUrl} alt="" className="mt-2 w-14 h-14 rounded-full object-cover border" />
+              )}
+            </div>
+          )}
         </div>
       );
 
