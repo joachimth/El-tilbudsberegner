@@ -63,6 +63,7 @@ function SortableLokation({ id, children }: SortableLokationProps) {
     <div ref={setNodeRef} style={style} className="relative group/sortable">
       {/* Drag-håndtag - vises ved hover */}
       <button
+        type="button"
         {...attributes}
         {...listeners}
         className="absolute -left-6 top-4 p-1 text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing transition-opacity opacity-0 group-hover/sortable:opacity-100 touch-none z-10"
@@ -167,8 +168,8 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
   const handleLokationDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = offer.lokationer.findIndex(l => (l.id ?? String(l)) === active.id);
-    const newIndex = offer.lokationer.findIndex(l => (l.id ?? String(l)) === over.id);
+    const oldIndex = offer.lokationer.findIndex((l, i) => (l.id ?? String(i)) === active.id);
+    const newIndex = offer.lokationer.findIndex((l, i) => (l.id ?? String(i)) === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
     setOffer(o => ({ ...o, lokationer: arrayMove(o.lokationer, oldIndex, newIndex) }));
   }, [offer.lokationer]);

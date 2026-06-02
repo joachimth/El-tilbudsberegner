@@ -105,6 +105,19 @@ export class DbStorage {
       .onConflictDoUpdate({ target: indstillinger.nøgle, set: { værdi: value } });
   }
 
+  async naesteTilbudNr(): Promise<string> {
+    const year = new Date().getFullYear();
+    const tællerNøgle = `tilbud_tæller_${year}`;
+    const rows = await db.select().from(indstillinger).where(eq(indstillinger.nøgle, tællerNøgle));
+    const nuværende = rows.length > 0 ? parseInt(rows[0].værdi, 10) : 0;
+    const næste = nuværende + 1;
+    await db
+      .insert(indstillinger)
+      .values({ nøgle: tællerNøgle, værdi: String(næste) })
+      .onConflictDoUpdate({ target: indstillinger.nøgle, set: { værdi: String(næste) } });
+    return `${year}-${String(næste).padStart(4, "0")}`;
+  }
+
   async updateSettings(settings: Record<string, string>): Promise<void> {
     for (const [key, value] of Object.entries(settings)) {
       await this.updateSetting(key, value);

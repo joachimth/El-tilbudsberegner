@@ -14,7 +14,7 @@ import NotFound from "@/pages/not-found";
 import type { Offer } from "@/lib/types";
 import type { CurrentUser } from "@/lib/auth";
 import type { Skabelon } from "@shared/schema";
-import { createEmptyOffer } from "@/lib/offer-utils";
+import { createEmptyOffer, migrerLokationIds } from "@/lib/offer-utils";
 import { ErrorBoundary } from "@/components/error-boundary";
 
 function Router() {
@@ -45,12 +45,19 @@ function Router() {
   const handleTemplateSelected = useCallback(async (skabelon: Skabelon) => {
     const offer = createEmptyOffer(skabelon);
     try {
-      const res = await fetch(`/api/skabelon/${skabelon}/defaults`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
+      const [defaultsRes, nrRes] = await Promise.all([
+        fetch(`/api/skabelon/${skabelon}/defaults`, { credentials: "include" }),
+        fetch("/api/tilbud/naeste-nr", { credentials: "include" }),
+      ]);
+      if (defaultsRes.ok) {
+        const data = await defaultsRes.json();
         if (Array.isArray(data.defaultLokationer) && data.defaultLokationer.length > 0) {
-          offer.lokationer = data.defaultLokationer;
+          offer.lokationer = migrerLokationIds(data.defaultLokationer);
         }
+      }
+      if (nrRes.ok) {
+        const { nr } = await nrRes.json();
+        offer.meta.tilbudNr = nr;
       }
     } catch {}
     setCurrentOffer(offer);

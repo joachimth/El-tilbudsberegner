@@ -15,6 +15,9 @@ import { renderEvErhvervV2 } from "./templates/ev_erhverv_v2.js";
 
 // ── HTML-generator (skabelon-specifik) ───────────────────────────────────────
 
+const esc = (s: string | undefined | null) =>
+  (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
 async function genererHtml(offer: Offer, products: Product[], config: Config): Promise<string> {
   const pm = new Map(products.map(p => [p.id, p]));
   const fmtDKK = (n: number) =>
@@ -34,12 +37,12 @@ async function genererHtml(offer: Offer, products: Product[], config: Config): P
       const p = pm.get(l.productId); if (!p) return "";
       const e = ep(l.productId, l.antal), line = lp(l.productId, l.antal);
       sub += line;
-      return `<tr><td style="padding:8px 6px;border-bottom:1px solid #eee;">${p.navn}</td>
-        <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:center;">${l.antal} ${p.enhed}</td>
-        <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;">${fmtDKK(e)}</td>
-        <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;font-weight:500;">${fmtDKK(line)}</td></tr>`;
+      return `<tr><td style="padding:8px 6px;border-bottom:1px solid #eee;">${esc(p.navn)}</td>
+          <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:center;">${l.antal} ${esc(p.enhed)}</td>
+          <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;">${fmtDKK(e)}</td>
+          <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;font-weight:500;">${fmtDKK(line)}</td></tr>`;
     }).join("");
-    return { navn: lok.navn, beskrivelse: lok.beskrivelse, subtotal: sub, linjerHtml, linjer: lok.linjer };
+    return { navn: esc(lok.navn), beskrivelse: lok.beskrivelse ? esc(lok.beskrivelse) : undefined, subtotal: sub, linjerHtml, linjer: lok.linjer };
   });
   const total = loks.reduce((s, l) => s + l.subtotal, 0);
   const moms = total * (config.momsprocent / 100);
@@ -76,13 +79,13 @@ async function genererHtml(offer: Offer, products: Product[], config: Config): P
     footer{margin-top:40px;padding-top:20px;border-top:1px solid #d1d5db;font-size:12px;color:#6b7280;}`;
 
   const hoved = `<div class="hoved">
-    <div><div class="firma">${config.firmanavn}</div>
-    <div class="meta">${[config.adresse, config.postnrBy, config.telefon ? "Tlf. "+config.telefon : "", config.email].filter(Boolean).join("<br>")}</div></div>
+    <div><div class="firma">${esc(config.firmanavn)}</div>
+    <div class="meta">${[esc(config.adresse), esc(config.postnrBy), config.telefon ? "Tlf. "+esc(config.telefon) : "", esc(config.email)].filter(Boolean).join("<br>")}</div></div>
     <div class="meta" style="text-align:right;">
-      ${offer.kunde.navn ? `<strong>Kunde:</strong> ${offer.kunde.navn}<br>` : ""}
-      ${offer.kunde.adresse ? `${offer.kunde.adresse}<br>` : ""}
+      ${offer.kunde.navn ? `<strong>Kunde:</strong> ${esc(offer.kunde.navn)}<br>` : ""}
+      ${offer.kunde.adresse ? `${esc(offer.kunde.adresse)}<br>` : ""}
       ${offer.meta.dato ? `<strong>Dato:</strong> ${fmtDate(offer.meta.dato)}<br>` : ""}
-      ${offer.meta.tilbudNr ? `<strong>Ref.:</strong> ${offer.meta.tilbudNr}` : ""}
+      ${offer.meta.tilbudNr ? `<strong>Ref.:</strong> ${esc(offer.meta.tilbudNr)}` : ""}
     </div></div>`;
 
   const prisboks = `<div class="prisboks"><div class="prisboks-inner">
@@ -90,15 +93,15 @@ async function genererHtml(offer: Offer, products: Product[], config: Config): P
     <div class="prisboks-amount">${fmtDKK(slutpris)}</div>
   </div></div>`;
 
-  const footer = `<footer>${config.standardtekst ? `<p style="margin-bottom:10px;">${config.standardtekst}</p>` : ""}
-    ${config.betalingsbetingelser ? `<p>${config.betalingsbetingelser}</p>` : ""}</footer>`;
+  const footer = `<footer>${config.standardtekst ? `<p style="margin-bottom:10px;">${esc(config.standardtekst)}</p>` : ""}
+    ${config.betalingsbetingelser ? `<p>${esc(config.betalingsbetingelser)}</p>` : ""}</footer>`;
 
   const wrap = (band: string, body: string) =>
-    `<!DOCTYPE html><html lang="da"><head><meta charset="UTF-8"><title>Tilbud ${offer.meta.tilbudNr||""}</title><style>${CSS}</style></head>
+    `<!DOCTYPE html><html lang="da"><head><meta charset="UTF-8"><title>Tilbud ${esc(offer.meta.tilbudNr||"")}</title><style>${CSS}</style></head>
     <body><div class="band">${band}</div><div class="inner">${body}</div></body></html>`;
 
   const forbehold = offer.bemærkninger
-    ? offer.bemærkninger.split("\n").filter(l => l.trim()).map(l => `<li>${l.replace(/^[-•]\s*/, "")}</li>`).join("")
+    ? offer.bemærkninger.split("\n").filter(l => l.trim()).map(l => `<li>${esc(l.replace(/^[-•]\s*/, ""))}</li>`).join("")
     : "";
 
   // ── EV_ERHVERV_V2 ──
@@ -119,8 +122,8 @@ async function genererHtml(offer: Offer, products: Product[], config: Config): P
       const rækker = lok.linjer.map(l => {
         const p = pm.get(l.productId); if (!p) return "";
         const line = lp(l.productId, l.antal);
-        return `<tr><td style="padding:10px 6px;border-bottom:1px solid #eee;">${p.navn}</td>
-          <td style="padding:10px 6px;border-bottom:1px solid #eee;text-align:center;">${l.antal} ${p.enhed}</td>
+        return `<tr><td style="padding:10px 6px;border-bottom:1px solid #eee;">${esc(p.navn)}</td>
+          <td style="padding:10px 6px;border-bottom:1px solid #eee;text-align:center;">${l.antal} ${esc(p.enhed)}</td>
           <td style="padding:10px 6px;border-bottom:1px solid #eee;text-align:right;">${fmtDKK(line)}</td></tr>`;
       }).join("");
       return `${loks.length > 1 ? `<h3 style="font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:16px 0 8px;">${lok.navn}</h3>` : ""}
@@ -129,9 +132,9 @@ async function genererHtml(offer: Offer, products: Product[], config: Config): P
 
     return wrap("EV &amp; Erhverv · Tilbud", `
       ${hoved}
-      <h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">${offer.meta.projektnavn || "Tilbud"}</h1>
+      <h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">${esc(offer.meta.projektnavn) || "Tilbud"}</h1>
       <p style="color:#6b7280;margin-bottom:24px;font-size:13px;">Kompakt erhvervstilbud</p>
-      <div class="section"><h2>Prissætning</h2>${tbl3}${prisboks}</div>
+        <div class="section"><h2>Prissætning</h2>${tbl3}${prisboks}</div>
       ${forbehold ? `<div class="section"><h2>Generelle forbehold</h2><div class="forbehold"><ul>${forbehold}</ul></div></div>` : ""}
       ${footer}`);
   }
@@ -141,12 +144,12 @@ async function genererHtml(offer: Offer, products: Product[], config: Config): P
     const løsning = loks.map(lok => `
       <div style="border:1px solid #d1d5db;border-radius:10px;padding:14px 16px;background:#fafbfc;break-inside:avoid;">
         <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:8px;">${lok.navn}</h4>
-        <ul>${lok.linjer.map(l => { const p = pm.get(l.productId); return p ? `<li>${p.navn} (${l.antal} ${p.enhed})</li>` : ""; }).join("")}</ul>
+        <ul>${lok.linjer.map(l => { const p = pm.get(l.productId); return p ? `<li>${esc(p.navn)} (${l.antal} ${esc(p.enhed)})</li>` : ""; }).join("")}</ul>
       </div>`).join("");
 
     return wrap("Energi &amp; Privat · Tilbud", `
       ${hoved}
-      <h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">${offer.meta.projektnavn || "Tilbud"}</h1>
+        <h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">${esc(offer.meta.projektnavn) || "Tilbud"}</h1>
       <p style="color:#6b7280;margin-bottom:24px;font-size:13px;">Vi er glade for at præsentere vores tilbud. Løsningen er sammensat med fokus på driftssikkerhed og energibesparelse.</p>
       ${loks.length > 0 ? `<div class="section"><h2>Løsningen indeholder</h2>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;">${løsning}</div></div>` : ""}
@@ -166,13 +169,13 @@ async function genererHtml(offer: Offer, products: Product[], config: Config): P
     const moduler = loks.map(lok => {
       const rækker = lok.linjer.map(l => {
         const p = pm.get(l.productId); if (!p) return "";
-        return `<tr><td style="padding:6px 4px;border-bottom:1px solid #f3f4f6;font-size:13px;">${p.navn}</td>
-          <td style="padding:6px 4px;border-bottom:1px solid #f3f4f6;text-align:right;font-size:13px;color:#9ca3af;">${l.antal} ${p.enhed}</td>
+          return `<tr><td style="padding:6px 4px;border-bottom:1px solid #f3f4f6;font-size:13px;">${esc(p.navn)}</td>
+            <td style="padding:6px 4px;border-bottom:1px solid #f3f4f6;text-align:right;font-size:13px;color:#9ca3af;">${l.antal} ${esc(p.enhed)}</td>
           <td style="padding:6px 4px;border-bottom:1px solid #f3f4f6;text-align:right;font-size:13px;">${fmtDKK(lp(l.productId,l.antal))}</td></tr>`;
       }).join("");
       return `<div class="modul">
-        <div class="modul-row"><div class="modul-titel">${lok.navn}</div><div class="modul-pris">${fmtDKK(lok.subtotal)}</div></div>
-        ${lok.beskrivelse ? `<p style="font-size:13px;color:#6b7280;margin-bottom:10px;">${lok.beskrivelse}</p>` : ""}
+          <div class="modul-row"><div class="modul-titel">${lok.navn}</div><div class="modul-pris">${fmtDKK(lok.subtotal)}</div></div>
+          ${lok.beskrivelse ? `<p style="font-size:13px;color:#6b7280;margin-bottom:10px;">${lok.beskrivelse}</p>` : ""}
         ${rækker ? `<table style="margin-top:6px;"><tbody>${rækker}</tbody></table>` : ""}
       </div>`;
     }).join("");
@@ -180,7 +183,7 @@ async function genererHtml(offer: Offer, products: Product[], config: Config): P
     return wrap("Modul Overslag", `
       ${hoved}
       <h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">Overslagspris</h1>
-      <p style="color:#6b7280;margin-bottom:24px;font-size:13px;">${offer.meta.projektnavn || "Flerfagligt projekt"}</p>
+        <p style="color:#6b7280;margin-bottom:24px;font-size:13px;">${esc(offer.meta.projektnavn) || "Flerfagligt projekt"}</p>
       ${forbehold ? `<div class="section"><h2>Forudsætninger</h2>
         <div style="border:1px solid #d1d5db;border-radius:10px;padding:14px 16px;background:#fafbfc;"><ul>${forbehold}</ul></div></div>` : ""}
       <div class="section">${moduler}</div>
@@ -200,7 +203,7 @@ async function genererHtml(offer: Offer, products: Product[], config: Config): P
 
   return wrap("Tilbud", `
     ${hoved}
-    <h1 style="font-size:26px;font-weight:700;margin-bottom:20px;">${offer.meta.projektnavn || "Tilbud"}</h1>
+      <h1 style="font-size:26px;font-weight:700;margin-bottom:20px;">${esc(offer.meta.projektnavn) || "Tilbud"}</h1>
     ${lokSektioner}
     <div style="margin-top:24px;padding-top:20px;border-top:2px solid #111;display:flex;justify-content:flex-end;">
       <div style="min-width:240px;">
@@ -215,7 +218,7 @@ async function genererHtml(offer: Offer, products: Product[], config: Config): P
       </div></div>
     ${offer.bemærkninger ? `<div style="margin-top:28px;padding:16px;background:#f9fafb;border-radius:8px;">
       <h3 style="font-weight:600;margin-bottom:8px;">Bemærkninger</h3>
-      <p style="font-size:13px;color:#6b7280;white-space:pre-wrap;">${offer.bemærkninger}</p></div>` : ""}
+        <p style="font-size:13px;color:#6b7280;white-space:pre-wrap;">${esc(offer.bemærkninger)}</p></div>` : ""}
     ${footer}`);
 }
 
@@ -308,6 +311,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ── Tilbud ────────────────────────────────────────────────────────────
+
+  app.get("/api/tilbud/naeste-nr", requireAuth, async (_req, res) => {
+    try {
+      const nr = await storage.naesteTilbudNr();
+      res.json({ nr });
+    } catch {
+      res.status(500).json({ error: "Kunne ikke generere tilbudsnummer" });
+    }
+  });
 
   app.get("/api/offers", requireAuth, async (req, res) => {
     try {

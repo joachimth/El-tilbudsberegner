@@ -1,0 +1,113 @@
+name: CI · Screenshots & Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 1 – TypeScript-check
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Installer afhængigheder
+        run: bun install --frozen-lockfile
+
+      - name: TypeScript-check
+        run: bun run check
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 2 – Auto-screenshots via Playwright
+# Starter appen med en in-memory PostgreSQL, logger ind som admin og tager
+# screenshots af alle hovedelementer. Committer ændringer tilbage til main.
+# [skip ci] forhindrer uendelig loop.
+# ─────────────────────────────────────────────────────────────────────────────
+  screenshots:
+    needs: typecheck
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tilbud
+          POSTGRES_PASSWORD: tilbud
+          POSTGRES_DB: tilbud
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://tilbud:tilbud@localhost:5432/tilbud
+      SESSION_SECRET: ci-screenshot-secret-ikke-prod
+      NODE_ENV: production
+      PORT: 5000
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Installer afhængigheder
+        run: bun install --frozen-lockfile
+
+      - name: Byg app
+        run: bun run build
+
+      - name: Push database-schema
+        run: bun run db:push
+
+      - name: Installer Playwright + Chromium
+        run: bunx playwright install chromium --with-deps
+
+      - name: Start server i baggrunden
+        run: |
+          bun run start &
+          echo $! > /tmp/server.pid
+          # Vent til serveren er klar (max 30s)
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5000/api/auth/me > /dev/null 2>&1 && break
+            sleep 1
+          done
+          echo "Server klar"
+
+      - name: Tag screenshots
+        run: node scripts/take-screenshots.mjs
+        env:
+          APP_URL: http://localhost:5000
+          DEMO_USER: admin
+          DEMO_PASS: admin123
+
+      - name: Stop server
+        run: kill $(cat /tmp/server.pid) 2>/dev/null || true
+
+      - name: Commit screenshots hvis ændret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/
+          if git diff --cached --quiet; then
+            echo "Ingen ændringer i screenshots - springer commit over"
+          else
+            git commit -m "chore: auto-update screenshots [skip ci]"
+            git push origin main
+          fi

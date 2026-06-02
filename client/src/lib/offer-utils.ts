@@ -144,6 +144,16 @@ export function downloadAsJson(offer: Offer, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Tildeler stabile id'er til lokationer der mangler det.
+ * Bruges ved indlæsning fra server eller JSON-filer gemt med ældre versioner.
+ */
+export function migrerLokationIds(lokationer: Lokation[]): Lokation[] {
+  return lokationer.map(lok =>
+    lok.id ? lok : { ...lok, id: `lok_${uid()}` }
+  );
+}
+
 export function loadFromJsonFile(file: File): Promise<Offer> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

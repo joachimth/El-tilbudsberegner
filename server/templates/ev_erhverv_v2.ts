@@ -288,7 +288,11 @@ function renderCustomBillede(data: BlokData | undefined): string {
 
 function renderCustomTekst(data: BlokData | undefined): string {
   if (!data?.tekst && !data?.overskrift) return "";
-  const stilClass = data.stil === "fremhævet" ? "custom-tekst-fremhaevet" : "custom-tekst-normal";
+  const stilClass = data.stil === "fremhævet"
+    ? "custom-tekst-fremhaevet"
+    : data.stil === "advarsel"
+      ? "custom-tekst-advarsel"
+      : "custom-tekst-normal";
   return `<div class="section custom-tekst-blok ${stilClass}">
     ${data.overskrift ? `<div class="custom-tekst-overskrift">${esc(data.overskrift)}</div>` : ""}
     ${data.tekst ? `<p class="custom-tekst-indhold">${esc(data.tekst)}</p>` : ""}
@@ -665,6 +669,14 @@ export function renderEvErhvervV2(
     .custom-tekst-fremhaevet {
       background: var(--accent-light);
       border-left: 3px solid var(--accent);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 12px 16px;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .custom-tekst-advarsel {
+      background: #fffbeb;
+      border-left: 3px solid #f59e0b;
       border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
       padding: 12px 16px;
       font-size: 13px;

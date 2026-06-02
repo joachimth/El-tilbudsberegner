@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { FileText, Upload, Zap, Calculator, FileDown, Clock, LogOut, Settings, FolderOpen, ChevronRight, Trash2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { loadFromJsonFile } from "@/lib/offer-utils";
+import { loadFromJsonFile, migrerLokationIds } from "@/lib/offer-utils";
 import { useToast } from "@/hooks/use-toast";
 import { logout } from "@/lib/auth";
 import type { CurrentUser } from "@/lib/auth";
@@ -94,7 +94,8 @@ export default function Home({ currentUser, onLoadOffer, onNewOffer }: HomeProps
     try {
       const res = await fetch(`/api/offers/${id}`, { credentials: "include" });
       if (!res.ok) throw new Error("Kunne ikke hente tilbud");
-      const offer: Offer = await res.json();
+      const raw: Offer = await res.json();
+      const offer: Offer = { ...raw, lokationer: migrerLokationIds(raw.lokationer) };
       onLoadOffer(offer);
       navigate("/editor");
     } catch (error) {

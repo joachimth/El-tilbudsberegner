@@ -1,0 +1,97 @@
+/**
+ * take-screenshots.mjs
+ * Kræver: APP_URL, DEMO_USER og DEMO_PASS env vars (defaults til localhost:5000 / admin / admin123)
+ * Playwright Chromium skal være installeret.
+ */
+import { chromium } from "@playwright/test";
+import { fileURLToPath } from "url";
+import path from "path";
+import fs from "fs";
+
+const BASE = process.env.APP_URL ?? "http://localhost:5000";
+const USER = process.env.DEMO_USER ?? "admin";
+const PASS = process.env.DEMO_PASS ?? "admin123";
+const OUT  = path.join(path.dirname(fileURLToPath(import.meta.url)), "../docs/screenshots");
+fs.mkdirSync(OUT, { recursive: true });
+
+const DESKTOP = { width: 1280, height: 900 };
+const MOBILE  = { width: 390, height: 844 };
+
+async function waitReady(page, ms = 500) {
+  await page.waitForLoadState("networkidle").catch(() => {});
+  await page.waitForTimeout(ms);
+}
+
+(async () => {
+  const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+
+  // ── Desktop flow ───────────────────────────────────────────────────────
+  const ctx = await browser.newContext({ viewport: DESKTOP });
+  const p = await ctx.newPage();
+
+  // 1. Login-side
+  await p.goto(`${BASE}/login`);
+  await waitReady(p, 400);
+  await p.screenshot({ path: `${OUT}/01-login.png` });
+
+  // Log ind
+  await p.fill('input[name="brugernavn"], input[type="text"]', USER);
+  await p.fill('input[name="password"], input[type="password"]', PASS);
+  await p.click('button[type="submit"]');
+  await waitReady(p, 800);
+
+  // 2. Tilbudsliste / dashboard
+  await p.screenshot({ path: `${OUT}/02-tilbudsliste.png` });
+
+  // 3. Skabelon-vælger
+  const nyBtn = p.locator('button:has-text("Nyt tilbud"), a:has-text("Nyt tilbud")').first();
+  if (await nyBtn.count()) {
+    await nyBtn.click();
+    await waitReady(p, 600);
+    await p.screenshot({ path: `${OUT}/03-skabelonvaelger.png` });
+
+    // Vælg standard-skabelon
+    const stdBtn = p.locator('[data-skabelon="standard"], button:has-text("Standard"), button:has-text("standard")').first();
+    if (await stdBtn.count()) {
+      await stdBtn.click();
+      await waitReady(p, 800);
+      // 4. Editor
+      await p.screenshot({ path: `${OUT}/04-editor.png`, fullPage: false });
+      await p.screenshot({ path: `${OUT}/04-editor-full.png`, fullPage: true });
+
+      // 5. HTML-preview knap
+      const prevBtn = p.locator('button:has-text("Forhåndsvisning"), button:has-text("Preview"), a:has-text("Forhåndsvisning")').first();
+      if (await prevBtn.count()) {
+        await prevBtn.click();
+        await waitReady(p, 800);
+        await p.screenshot({ path: `${OUT}/05-preview.png`, fullPage: true });
+      }
+    }
+  }
+
+  // 6. Admin panel
+  await p.goto(`${BASE}/admin`);
+  await waitReady(p, 600);
+  await p.screenshot({ path: `${OUT}/06-admin.png` });
+
+  await ctx.close();
+
+  // ── Mobil flow ─────────────────────────────────────────────────────────
+  const mCtx = await browser.newContext({ viewport: MOBILE });
+  const m = await mCtx.newPage();
+
+  await m.goto(`${BASE}/login`);
+  await waitReady(m, 400);
+  await m.fill('input[name="brugernavn"], input[type="text"]', USER);
+  await m.fill('input[name="password"], input[type="password"]', PASS);
+  await m.click('button[type="submit"]');
+  await waitReady(m, 800);
+  await m.screenshot({ path: `${OUT}/07-mobil-dashboard.png` });
+
+  await mCtx.close();
+  await browser.close();
+
+  console.log(`Screenshots gemt i ${OUT}`);
+  const files = fs.readdirSync(OUT).filter(f => f.endsWith(".png"));
+  files.forEach(f => console.log(`  ✓ ${f}`));
+})();

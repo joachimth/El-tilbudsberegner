@@ -338,11 +338,12 @@ function BlokInlineEditor({
           </div>
           <div>
             <Label className="text-xs">Stil</Label>
-            <Select value={d.stil || "normal"} onValueChange={v => set({ stil: v as "normal" | "fremhævet" })}>
+            <Select value={d.stil || "normal"} onValueChange={v => set({ stil: v as "normal" | "fremhævet" | "advarsel" })}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="fremhævet">Fremhævet (farvet boks)</SelectItem>
+                <SelectItem value="fremhævet">Fremhævet (blå boks)</SelectItem>
+                <SelectItem value="advarsel">Advarsel (gul boks)</SelectItem>
               </SelectContent>
             </Select>
           </div>
