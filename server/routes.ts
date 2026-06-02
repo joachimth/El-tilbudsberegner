@@ -10,7 +10,8 @@ import type { Product, Config } from "@shared/schema";
 import { SKABELON_REGISTRY } from "@shared/skabelon-registry";
 import { z } from "zod";
 import { renderEvErhvervV2 } from "./templates/ev_erhverv_v2.js";
-import { htmlToPdf } from "./templates/pdf.js";
+// NOTE: htmlToPdf (Playwright) er fjernet - Chromium er ikke tilgængeligt i Replit-deployments.
+// PDF-generering sker client-side via window.print().
 
 // ── HTML-generator (skabelon-specifik) ───────────────────────────────────────
 
@@ -321,8 +322,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/offers/:id", requireAuth, async (req, res) => {
     try {
-      const offer = await storage.getOffer(String(req.params.id));
+      const id = String(req.params.id);
+      const offer = await storage.getOffer(id);
       if (!offer) return res.status(404).json({ error: "Tilbud ikke fundet" });
+      // Montører kan kun se egne tilbud
+      if (req.user!.rolle !== "admin") {
+        const ownerId = await storage.getOfferOwnerId(id);
+        if (ownerId !== null && ownerId !== req.user!.id) {
+          return res.status(403).json({ error: "Adgang nægtet" });
+        }
+      }
       res.json(offer);
     } catch {
       res.status(500).json({ error: "Kunne ikke hente tilbud" });
@@ -362,7 +371,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/offers/:id", requireAuth, async (req, res) => {
     try {
-      await storage.deleteOffer(String(req.params.id));
+      const id = String(req.params.id);
+      // Montører kan kun slette egne tilbud
+      if (req.user!.rolle !== "admin") {
+        const ownerId = await storage.getOfferOwnerId(id);
+        if (ownerId !== null && ownerId !== req.user!.id) {
+          return res.status(403).json({ error: "Adgang nægtet" });
+        }
+      }
+      await storage.deleteOffer(id);
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Kunne ikke slette tilbud" });
@@ -396,26 +413,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ── PDF-eksport ───────────────────────────────────────────────────────
+  // ── PDF-eksport (deaktiveret - Playwright ikke tilgængeligt i Replit) ──
+  // PDF-generering sker client-side via window.print() / iframeRef.print().
 
-  app.post("/api/pdf-export", requireAuth, async (req, res) => {
-    try {
-      const parseResult = offerSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({ error: "Ugyldigt tilbud", details: parseResult.error.errors });
-      }
-      const offer = parseResult.data;
-      const products = await storage.getProducts();
-      const config = await storage.getConfig();
-      const html = await genererHtml(offer, products, config);
-      const pdf = await htmlToPdf(html);
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="tilbud-${offer.meta.tilbudNr || "draft"}.pdf"`);
-      res.send(pdf);
-    } catch (err) {
-      console.error("PDF export error:", err);
-      res.status(500).json({ error: "Kunne ikke generere PDF" });
-    }
+  app.post("/api/pdf-export", requireAuth, (_req, res) => {
+    res.status(501).json({
+      error: "Server-side PDF-eksport er ikke aktiveret i dette miljø. Brug browserens Udskriv → Gem som PDF."
+    });
   });
 
   // ── Admin: Produkter ──────────────────────────────────────────────────

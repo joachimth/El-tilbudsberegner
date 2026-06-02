@@ -173,6 +173,13 @@ export class DbStorage {
     return { ...(row.data as any), id: String(row.id) };
   }
 
+  async getOfferOwnerId(id: string): Promise<number | null> {
+    const numId = parseInt(id);
+    if (isNaN(numId)) return null;
+    const [row] = await db.select({ brugerId: tilbud.brugerId }).from(tilbud).where(eq(tilbud.id, numId));
+    return row?.brugerId ?? null;
+  }
+
   async getOffersList(userId?: number, isAdmin = false) {
     const rows = isAdmin
       ? await db.select({

@@ -31,6 +31,7 @@ export const linjeSchema = z.object({
 export type Linje = z.infer<typeof linjeSchema>;
 
 export const lokationSchema = z.object({
+  id: z.string().optional(), // Stabilt nøgle til React-keys (undgår state-flip ved flyt)
   navn: z.string(),
   beskrivelse: z.string().optional(),
   linjer: z.array(linjeSchema),
@@ -104,7 +105,7 @@ export const blokDataSchema = z.object({
   bredde: z.enum(["fuld", "indhold"]).optional(),
   // custom_tekst
   tekst: z.string().optional(),
-  stil: z.enum(["normal", "fremhævet"]).optional(),
+  stil: z.enum(["normal", "fremhævet", "advarsel"]).optional(),
 });
 export type BlokData = z.infer<typeof blokDataSchema>;
 

@@ -9,6 +9,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { LinjeEditor } from "./linje-editor";
 import type { Lokation, Product } from "@/lib/types";
 import { formatDKK, beregnLinjepris } from "@shared/schema";
@@ -52,6 +62,7 @@ export function LokationEditor({
   const [isOpen, setIsOpen] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
   const [visAlle, setVisAlle] = useState(false);
+  const [sletDialogOpen, setSletDialogOpen] = useState(false);
 
   const filterAktiv = kategoriFilter.length > 0;
   const visibleProducts = filterAktiv && !visAlle
@@ -185,8 +196,14 @@ export function LokationEditor({
                   <ChevronDown className="w-4 h-4 mr-2" />
                   Flyt ned
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={onDelete}
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (lokation.linjer.length > 0) {
+                      setSletDialogOpen(true);
+                    } else {
+                      onDelete();
+                    }
+                  }}
                   className="text-destructive focus:text-destructive"
                   data-testid="menu-delete-lokation"
                 >
@@ -257,6 +274,28 @@ export function LokationEditor({
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
+
+      {/* Bekræftelsesdialog ved sletning af lokation med produkter */}
+      <AlertDialog open={sletDialogOpen} onOpenChange={setSletDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Slet &ldquo;{lokation.navn}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Lokationen indeholder {lokation.linjer.length} {lokation.linjer.length === 1 ? "produkt" : "produkter"}.
+              Alt indhold slettes permanent og kan ikke gendannes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuller</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { setSletDialogOpen(false); onDelete(); }}
+            >
+              Slet alligevel
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

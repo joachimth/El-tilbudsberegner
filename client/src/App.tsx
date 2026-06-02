@@ -15,6 +15,7 @@ import type { Offer } from "@/lib/types";
 import type { CurrentUser } from "@/lib/auth";
 import type { Skabelon } from "@shared/schema";
 import { createEmptyOffer } from "@/lib/offer-utils";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 function Router() {
   const [currentOffer, setCurrentOffer] = useState<Offer | null>(null);
@@ -122,7 +123,9 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <ErrorBoundary>
+          <Router />
+        </ErrorBoundary>
       </TooltipProvider>
     </QueryClientProvider>
   );

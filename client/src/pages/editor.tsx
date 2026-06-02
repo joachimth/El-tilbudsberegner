@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -17,11 +17,62 @@ import type { Blok } from "@shared/schema";
 import { BlokEditor, initBlokke } from "@/components/blok-editor";
 import { LayoutTemplate } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAutosave, clearKladde } from "@/hooks/use-autosave";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
 
 interface EditorPageProps {
   initialOffer: Offer | null;
   onOfferChange: (offer: Offer) => void;
   currentUser: CurrentUser;
+}
+
+// Sortable wrapper til drag-and-drop af lokationer
+interface SortableLokationProps {
+  id: string;
+  children: React.ReactNode;
+}
+
+function SortableLokation({ id, children }: SortableLokationProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative group/sortable">
+      {/* Drag-håndtag - vises ved hover */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="absolute -left-6 top-4 p-1 text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing transition-opacity opacity-0 group-hover/sortable:opacity-100 touch-none z-10"
+        title="Træk for at flytte lokation"
+      >
+        <GripVertical className="w-4 h-4" />
+      </button>
+      {children}
+    </div>
+  );
 }
 
 type MobileTab = "lokationer" | "kunde" | "resume";
@@ -54,6 +105,9 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
   const { data: config } = useQuery<Config>({
     queryKey: ["/api/config"],
   });
+
+  // Auto-save til localStorage efter hvert ændring
+  useAutosave(offer);
 
   const isV2 = offer.skabelon === "ev_erhverv_v2";
 
@@ -104,6 +158,21 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
     setOffer({ ...offer, lokationer: newLokationer });
   };
 
+  // Drag-and-drop sensors til lokationer
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleLokationDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = offer.lokationer.findIndex(l => (l.id ?? String(l)) === active.id);
+    const newIndex = offer.lokationer.findIndex(l => (l.id ?? String(l)) === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    setOffer(o => ({ ...o, lokationer: arrayMove(o.lokationer, oldIndex, newIndex) }));
+  }, [offer.lokationer]);
+
   const handleSaveToServer = async () => {
     setSaving(true);
     try {
@@ -121,6 +190,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
       setOffer(saved);
       onOfferChange(saved);
       queryClient.invalidateQueries({ queryKey: ["/api/offers"] });
+      clearKladde(); // Auto-save kladde ikke længere nødvendig
       toast({ title: "Gemt", description: "Tilbud gemt til serveren." });
     } catch (err) {
       toast({ title: "Fejl", description: err instanceof Error ? err.message : "Kunne ikke gemme.", variant: "destructive" });
@@ -415,21 +485,36 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
             </div>
           ) : (
             <>
-              {offer.lokationer.map((lokation, index) => (
-                <LokationEditor
-                  key={index}
-                  lokation={lokation}
-                  products={products}
-                  lokationIndex={index}
-                  totalLokationer={offer.lokationer.length}
-                  skabelon={offer.skabelon}
-                  kategoriFilter={config?.skabelonKategorier?.[offer.skabelon] ?? []}
-                  onChange={lok => handleLokationChange(index, lok)}
-                  onDelete={() => handleDeleteLokation(index)}
-                  onMoveUp={() => handleMoveLokation(index, "up")}
-                  onMoveDown={() => handleMoveLokation(index, "down")}
-                />
-              ))}
+              {/* DndContext wrapper til drag-and-drop af lokationer */}
+              <DndContext
+                sensors={dndSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleLokationDragEnd}
+              >
+                <SortableContext
+                  items={offer.lokationer.map((l, i) => l.id ?? String(i))}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="pl-6">
+                    {offer.lokationer.map((lokation, index) => (
+                      <SortableLokation key={lokation.id ?? index} id={lokation.id ?? String(index)}>
+                        <LokationEditor
+                          lokation={lokation}
+                          products={products}
+                          lokationIndex={index}
+                          totalLokationer={offer.lokationer.length}
+                          skabelon={offer.skabelon}
+                          kategoriFilter={config?.skabelonKategorier?.[offer.skabelon] ?? []}
+                          onChange={lok => handleLokationChange(index, lok)}
+                          onDelete={() => handleDeleteLokation(index)}
+                          onMoveUp={() => handleMoveLokation(index, "up")}
+                          onMoveDown={() => handleMoveLokation(index, "down")}
+                        />
+                      </SortableLokation>
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
 
               <Button
                 variant="outline"
@@ -499,7 +584,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
               <>
                 {offer.lokationer.map((lokation, index) => (
                   <LokationEditor
-                    key={index}
+                    key={lokation.id ?? index}
                     lokation={lokation}
                     products={products}
                     lokationIndex={index}
@@ -575,7 +660,7 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
       {/* Mobil: fast bundlinje med total og forhåndsvis */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t safe-area-bottom z-50">
         <div className="px-4 py-3 flex items-center gap-3">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <p className="text-xs text-muted-foreground">
               {offer.moms.visInkl ? "Total inkl. moms" : "Subtotal"}
             </p>
@@ -583,9 +668,21 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
               {formatDKK(totalDisplay)}
             </p>
           </div>
+          {/* Gem - sekundær */}
+          <Button
+            variant="outline"
+            size="lg"
+            className="h-12 px-4 shrink-0"
+            onClick={handleSaveToServer}
+            disabled={saving}
+            data-testid="button-save-bottom"
+          >
+            <Cloud className="w-5 h-5" />
+          </Button>
+          {/* Forhåndsvis - primær CTA */}
           <Button
             size="lg"
-            className="h-12 px-6"
+            className="h-12 px-5 shrink-0"
             onClick={handlePreview}
             data-testid="button-preview-bottom"
           >

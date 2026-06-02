@@ -1,5 +1,5 @@
 import type { Product, Offer, Lokation, Skabelon } from "@shared/schema";
-import { beregnEnhedspris, beregnLinjepris } from "@shared/schema";
+import { beregnEnhedspris, beregnLinjepris, offerSchema } from "@shared/schema";
 import type { OfferWithTotals, LokationWithTotals, LinjeWithProduct } from "./types";
 
 export function calculateOfferTotals(
@@ -90,8 +90,13 @@ export function createEmptyOffer(skabelon: Skabelon = "standard"): Offer {
   };
 }
 
+function uid(): string {
+  return Math.random().toString(36).slice(2, 10);
+}
+
 export function createEmptyLokation(navn: string = "Ny lokation"): Lokation {
   return {
+    id: `lok_${uid()}`,
     navn,
     linjer: []
   };
@@ -145,10 +150,30 @@ export function loadFromJsonFile(file: File): Promise<Offer> {
     reader.onload = (e) => {
       try {
         const content = e.target?.result as string;
-        const offer = JSON.parse(content) as Offer;
-        resolve(offer);
+        const raw = JSON.parse(content);
+
+        // Valider med Zod - giver præcis fejlbesked ved korrupt/forkert format
+        const result = offerSchema.safeParse(raw);
+        if (!result.success) {
+          const firstError = result.error.errors[0];
+          const field = firstError.path.join(".") || "tilbud";
+          reject(new Error(`Ugyldigt tilbudsformat - ${field}: ${firstError.message}`));
+          return;
+        }
+
+        const offer = result.data;
+
+        // Migration: tildel id til lokationer der mangler det (gamle JSON-filer)
+        const migratedOffer: Offer = {
+          ...offer,
+          lokationer: offer.lokationer.map(lok =>
+            lok.id ? lok : { ...lok, id: `lok_${Math.random().toString(36).slice(2, 10)}` }
+          ),
+        };
+
+        resolve(migratedOffer);
       } catch (error) {
-        reject(new Error("Ugyldig fil - kunne ikke læse tilbuddet"));
+        reject(new Error("Ugyldig fil - kunne ikke læse JSON"));
       }
     };
     reader.onerror = () => reject(new Error("Kunne ikke læse filen"));

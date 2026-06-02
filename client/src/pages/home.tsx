@@ -1,15 +1,17 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Upload, Zap, Calculator, FileDown, Clock, LogOut, Settings, FolderOpen, ChevronRight, Trash2 } from "lucide-react";
+import { FileText, Upload, Zap, Calculator, FileDown, Clock, LogOut, Settings, FolderOpen, ChevronRight, Trash2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { loadFromJsonFile } from "@/lib/offer-utils";
 import { useToast } from "@/hooks/use-toast";
 import { logout } from "@/lib/auth";
 import type { CurrentUser } from "@/lib/auth";
 import type { Offer } from "@/lib/types";
+import { KladdeBanner } from "@/components/kladde-banner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +44,7 @@ export default function Home({ currentUser, onLoadOffer, onNewOffer }: HomeProps
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [søgeTekst, setSøgeTekst] = useState("");
 
   const { data: offers = [], isLoading: offersLoading } = useQuery<OfferSummary[]>({
     queryKey: ["/api/offers"],
@@ -200,6 +203,9 @@ export default function Home({ currentUser, onLoadOffer, onNewOffer }: HomeProps
           </Card>
         </div>
 
+        {/* Kladde-banner - vises hvis der er en auto-gemt kladde */}
+        <KladdeBanner onRestore={(restoredOffer) => { onLoadOffer(restoredOffer); navigate("/editor"); }} />
+
         {/* Saved offers */}
         <section className="mb-10">
           <div className="flex items-center gap-2 mb-4">
@@ -209,6 +215,19 @@ export default function Home({ currentUser, onLoadOffer, onNewOffer }: HomeProps
               <Badge variant="secondary" className="ml-1">{offers.length}</Badge>
             )}
           </div>
+
+          {/* Søgefelt - vises kun når der er tilbud at søge i */}
+          {offers.length >= 5 && (
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={søgeTekst}
+                onChange={e => setSøgeTekst(e.target.value)}
+                placeholder="Søg på projektnavn eller tilbudsnr..."
+                className="pl-9 h-10"
+              />
+            </div>
+          )}
 
           {offersLoading ? (
             <div className="space-y-2">
@@ -224,7 +243,17 @@ export default function Home({ currentUser, onLoadOffer, onNewOffer }: HomeProps
             </div>
           ) : (
             <div className="space-y-2">
-              {offers.map(offer => (
+              {offers
+                .filter(offer => {
+                  if (!søgeTekst.trim()) return true;
+                  const q = søgeTekst.toLowerCase();
+                  return (
+                    (offer.titel || "").toLowerCase().includes(q) ||
+                    (offer.tilbudNr || "").toLowerCase().includes(q) ||
+                    (offer.brugerNavn || "").toLowerCase().includes(q)
+                  );
+                })
+                .map(offer => (
                 <div
                   key={offer.id}
                   className="flex items-center gap-3 p-3 sm:p-4 rounded-lg border bg-card hover:bg-accent/30 transition-colors group"
