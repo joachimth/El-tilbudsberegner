@@ -73,9 +73,6 @@ jobs:
       - name: Byg app
         run: bun run build
 
-      - name: Push database-schema
-        run: bun run db:push
-
       - name: Installer Playwright + Chromium
         run: bunx playwright install chromium --with-deps
 
