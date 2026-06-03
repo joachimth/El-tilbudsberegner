@@ -65,16 +65,15 @@ export function calculateOfferTotals(
 
 export function createEmptyOffer(skabelon: Skabelon = "standard"): Offer {
   const today = new Date().toISOString().split('T')[0];
-  const year = new Date().getFullYear();
-  const randomNum = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-
+  // tilbudNr hentes fra serveren (GET /api/tilbud/naeste-nr) og sættes efterfølgende.
+  // Bruges kun som temporær placeholder til næste server-fetch er færdig.
   return {
     skabelon,
     meta: {
       projektnavn: "",
       dato: today,
       reference: "",
-      tilbudNr: `${year}-${randomNum}`
+      tilbudNr: undefined
     },
     kunde: {
       navn: "",

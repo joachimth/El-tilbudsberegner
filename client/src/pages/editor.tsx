@@ -673,12 +673,13 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
           <Button
             variant="outline"
             size="lg"
-            className="h-12 px-4 shrink-0"
+            className="h-12 px-4 shrink-0 gap-2"
             onClick={handleSaveToServer}
             disabled={saving}
             data-testid="button-save-bottom"
           >
             <Cloud className="w-5 h-5" />
+            <span className="text-sm">{saving ? "Gemmer..." : "Gem"}</span>
           </Button>
           {/* Forhåndsvis - primær CTA */}
           <Button

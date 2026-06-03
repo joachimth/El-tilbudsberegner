@@ -22,7 +22,15 @@ export function KladdeBanner({ onRestore }: KladdeBannerProps) {
   const [slot, setSlot] = useState<AutosaveSlot | null>(null);
 
   useEffect(() => {
-    setSlot(loadKladde());
+    const loaded = loadKladde();
+    if (!loaded) return;
+    // Kassér automatisk kladder ældre end 24 timer
+    const ageMs = Date.now() - new Date(loaded.savedAt).getTime();
+    if (ageMs > 24 * 60 * 60 * 1000) {
+      clearKladde();
+      return;
+    }
+    setSlot(loaded);
   }, []);
 
   if (!slot) return null;

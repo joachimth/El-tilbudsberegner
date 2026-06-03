@@ -112,11 +112,6 @@ async function genererHtml(offer: Offer, products: Product[], config: Config): P
 
   // ── EV_ERHVERV ──
   if (offer.skabelon === "ev_erhverv") {
-    const tabeller = loks.map(lok => `
-      ${loks.length > 1 ? `<h3 style="font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:16px 0 8px;">${lok.navn}</h3>` : ""}
-      <table><thead><tr><th>Beskrivelse</th><th>Antal</th><th>Pris</th></tr></thead>
-      <tbody>${lok.linjerHtml.replace(/<td[^>]*>[^<]*<\/td>\s*$/gm, "").replace(/<td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;">/g, '<td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:right;">')}</tbody></table>`).join("");
-
     // Genbyg tabel uden enhedspris-kolonne (3 kolonner)
     const tbl3 = loks.map(lok => {
       const rækker = lok.linjer.map(l => {
@@ -369,6 +364,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const id = String(req.params.id);
       const existing = await storage.getOffer(id);
       if (!existing) return res.status(404).json({ error: "Tilbud ikke fundet" });
+      // Montører kan kun redigere egne tilbud
+      if (req.user!.rolle !== "admin") {
+        const ownerId = await storage.getOfferOwnerId(id);
+        if (ownerId !== null && ownerId !== req.user!.id) {
+          return res.status(403).json({ error: "Adgang nægtet" });
+        }
+      }
       const parseResult = offerSchema.safeParse({ ...req.body, id });
       if (!parseResult.success) {
         return res.status(400).json({ error: "Ugyldigt tilbud", details: parseResult.error.errors });
