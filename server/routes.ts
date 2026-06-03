@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import multer from "multer";
 import { storage } from "./storage";
-import { requireAuth, requireAdmin, hashPassword } from "./auth";
+import { requireAuth, requireAdmin, hashPassword, comparePasswords } from "./auth";
 import { offerSchema } from "@shared/schema";
 import type { Offer } from "@shared/schema";
 import type { Product, Config } from "@shared/schema";
@@ -696,12 +696,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // Skift adgangskode (auth'd bruger kan ændre sin egen)
+  // Kræver det nuværende kodeord for at forhindre session-hijack i at låse brugeren ude.
   app.post("/api/auth/change-password", requireAuth, async (req, res) => {
     try {
-      const { password } = z.object({ password: z.string().min(6) }).parse(req.body);
-      const hash = await hashPassword(password);
+      const { oldPassword, password } = z.object({
+        oldPassword: z.string().min(1),
+        password: z.string().min(6),
+      }).parse(req.body);
       const { db, brugere } = await import("./db");
       const { eq } = await import("drizzle-orm");
+      const [user] = await db
+        .select({ passwordHash: brugere.passwordHash })
+        .from(brugere)
+        .where(eq(brugere.id, req.user!.id));
+      if (!user || !(await comparePasswords(oldPassword, user.passwordHash))) {
+        return res.status(401).json({ error: "Forkert nuværende adgangskode" });
+      }
+      const hash = await hashPassword(password);
       await db.update(brugere).set({ passwordHash: hash }).where(eq(brugere.id, req.user!.id));
       res.json({ ok: true });
     } catch {

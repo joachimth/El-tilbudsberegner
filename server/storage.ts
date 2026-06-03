@@ -1,5 +1,5 @@
 import { db, brugere, produkter, tilbud, indstillinger } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { hashPassword } from "./auth";
 import type { Product, Config, Offer } from "@shared/schema";
 
@@ -64,6 +64,7 @@ export class DbStorage {
       billedeBase64: p.billedeBase64 !== undefined ? (p.billedeBase64 ?? null) : undefined,
       producentLogoBase64: p.producentLogoBase64 !== undefined ? (p.producentLogoBase64 ?? null) : undefined,
       aktiv: p.aktiv !== undefined ? p.aktiv : undefined,
+      sortering: p.sortering !== undefined ? p.sortering : undefined,
     }).where(eq(produkter.id, id));
   }
 
@@ -108,13 +109,18 @@ export class DbStorage {
   async naesteTilbudNr(): Promise<string> {
     const year = new Date().getFullYear();
     const tællerNøgle = `tilbud_tæller_${year}`;
-    const rows = await db.select().from(indstillinger).where(eq(indstillinger.nøgle, tællerNøgle));
-    const nuværende = rows.length > 0 ? parseInt(rows[0].værdi, 10) : 0;
-    const næste = nuværende + 1;
-    await db
+    // Atomisk increment via INSERT ... ON CONFLICT DO UPDATE.
+    // Undgår race condition hvor to samtidige requests læser samme tæller-værdi
+    // og genererer identiske tilbudsnumre.
+    const [row] = await db
       .insert(indstillinger)
-      .values({ nøgle: tællerNøgle, værdi: String(næste) })
-      .onConflictDoUpdate({ target: indstillinger.nøgle, set: { værdi: String(næste) } });
+      .values({ nøgle: tællerNøgle, værdi: "1" })
+      .onConflictDoUpdate({
+        target: indstillinger.nøgle,
+        set: { værdi: sql`CAST(${indstillinger.værdi} AS INT) + 1` },
+      })
+      .returning({ værdi: indstillinger.værdi });
+    const næste = parseInt(row.værdi, 10);
     return `${year}-${String(næste).padStart(4, "0")}`;
   }
 
