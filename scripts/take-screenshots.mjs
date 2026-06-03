@@ -3,7 +3,7 @@
  * Kræver: APP_URL, DEMO_USER og DEMO_PASS env vars (defaults til localhost:5000 / admin / admin123)
  * Playwright Chromium skal være installeret.
  */
-import { chromium } from "@playwright/test";
+import { chromium } from "playwright";
 import { fileURLToPath } from "url";
 import path from "path";
 import fs from "fs";
