@@ -80,15 +80,16 @@ jobs:
         run: |
           bun run start &
           echo $! > /tmp/server.pid
-          # Vent til serveren er klar (max 30s)
+          # Vent til serveren svarer (max 30s).
+          # Bruger ikke -f så 401 (ikke logget ind) også tæller som "klar".
           for i in $(seq 1 30); do
-            curl -sf http://localhost:5000/api/auth/me > /dev/null 2>&1 && break
+            curl -s -o /dev/null http://localhost:5000/api/auth/me && break
             sleep 1
           done
           echo "Server klar"
 
       - name: Tag screenshots
-        run: node scripts/take-screenshots.mjs
+        run: bun scripts/take-screenshots.mjs
         env:
           APP_URL: http://localhost:5000
           DEMO_USER: admin
