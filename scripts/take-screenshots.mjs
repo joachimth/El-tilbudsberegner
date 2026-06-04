@@ -71,53 +71,44 @@ async function waitReady(page, ms = 500) {
     }
   }
 
-  // 6-9. Admin panel – alle 4 tabs
-  // Sørg for vi er logget ind (session kan være tabt efter navigation)
-  const meRes = await p.evaluate(async () => {
-    const r = await fetch('/api/auth/me', { credentials: 'include' });
-    return r.status;
-  });
-  if (meRes !== 200) {
-    await p.goto(`${BASE}/login`);
-    await p.waitForSelector('#brugernavn', { timeout: 10000 });
-    await p.fill('#brugernavn', USER);
-    await p.fill('input[type="password"]', PASS);
-    await p.click('button[type="submit"]');
-    await waitReady(p, 1000);
-  }
-  await p.goto(`${BASE}/admin`);
-  await waitReady(p, 1500);
+  // 6-9. Admin panel – frisk context for at undgå session-state problemer
+  await ctx.close();
+  const adminCtx = await browser.newContext({ viewport: DESKTOP });
+  const a = await adminCtx.newPage();
+  await a.goto(`${BASE}/login`);
+  await a.waitForSelector('#brugernavn', { timeout: 10000 });
+  await a.fill('#brugernavn', USER);
+  await a.fill('input[type="password"]', PASS);
+  await a.click('button[type="submit"]');
+  await waitReady(a, 1200);
+  await a.goto(`${BASE}/admin`);
+  // Vent til admin-tabs er klar
+  await a.waitForSelector('[role="tab"]', { timeout: 15000 });
+  await waitReady(a, 600);
+  await a.screenshot({ path: `${OUT}/06-admin-produkter.png` });
   await p.screenshot({ path: `${OUT}/06-admin-produkter.png` });
 
-  // Admin-tabs: vent til tabs er renderet, debug tæller
-  await p.waitForSelector('[role="tab"]', { timeout: 10000 }).catch(() => {});
-  const allTabs = p.locator('[role="tab"]');
+  // Admin-tabs via index
+  const allTabs = a.locator('[role="tab"]');
   const tabCount = await allTabs.count();
-  console.log(`Admin tabCount: ${tabCount}`);
-
-  // Debug: log alle tab-tekster
-  for (let i = 0; i < tabCount; i++) {
-    const txt = await allTabs.nth(i).innerText().catch(() => '?');
-    console.log(`  tab[${i}]: "${txt}"`);
-  }
 
   if (tabCount >= 2) {
     await allTabs.nth(1).click();
-    await waitReady(p, 700);
-    await p.screenshot({ path: `${OUT}/07-admin-indstillinger.png`, fullPage: true });
+    await waitReady(a, 700);
+    await a.screenshot({ path: `${OUT}/07-admin-indstillinger.png`, fullPage: true });
   }
   if (tabCount >= 3) {
     await allTabs.nth(2).click();
-    await waitReady(p, 700);
-    await p.screenshot({ path: `${OUT}/08-admin-skabeloner.png` });
+    await waitReady(a, 700);
+    await a.screenshot({ path: `${OUT}/08-admin-skabeloner.png` });
   }
   if (tabCount >= 4) {
     await allTabs.nth(3).click();
-    await waitReady(p, 700);
-    await p.screenshot({ path: `${OUT}/09-admin-brugere.png` });
+    await waitReady(a, 700);
+    await a.screenshot({ path: `${OUT}/09-admin-brugere.png` });
   }
 
-  await ctx.close();
+  await adminCtx.close();
 
   // ── Mobil flow ─────────────────────────────────────────────────────────
   const mCtx = await browser.newContext({ viewport: MOBILE });
