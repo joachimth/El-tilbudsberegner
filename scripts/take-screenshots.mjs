@@ -79,8 +79,8 @@ async function waitReady(page, ms = 500) {
   await waitReady(p, 800);
   await p.screenshot({ path: `${OUT}/06-admin-produkter.png` });
 
-  // Indstillinger-tab
-  const indstillingerTab = p.locator('[value="indstillinger"]').first();
+  // Indstillinger-tab (shadcn TabsTrigger bruger data-value ikke value)
+  const indstillingerTab = p.locator('[data-value="indstillinger"]').first();
   if (await indstillingerTab.count()) {
     await indstillingerTab.click();
     await waitReady(p, 600);
@@ -88,7 +88,7 @@ async function waitReady(page, ms = 500) {
   }
 
   // Skabeloner-tab
-  const skabelonerTab = p.locator('[value="skabeloner"]').first();
+  const skabelonerTab = p.locator('[data-value="skabeloner"]').first();
   if (await skabelonerTab.count()) {
     await skabelonerTab.click();
     await waitReady(p, 600);
@@ -96,7 +96,7 @@ async function waitReady(page, ms = 500) {
   }
 
   // Brugere-tab
-  const brugereTab = p.locator('[value="brugere"]').first();
+  const brugereTab = p.locator('[data-value="brugere"]').first();
   if (await brugereTab.count()) {
     await brugereTab.click();
     await waitReady(p, 600);
