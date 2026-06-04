@@ -31,14 +31,16 @@ async function waitReady(page, ms = 500) {
 
   // 1. Login-side
   await p.goto(`${BASE}/login`);
-  await waitReady(p, 400);
+  // Vent til brugernavns-feltet er synligt (SPA + stor JS-bundle kan tage tid)
+  // Login-siden bruger id="brugernavn" (ikke name-attribut)
+  await p.waitForSelector('#brugernavn', { timeout: 15000 });
   await p.screenshot({ path: `${OUT}/01-login.png` });
 
   // Log ind
-  await p.fill('input[name="brugernavn"], input[type="text"]', USER);
-  await p.fill('input[name="password"], input[type="password"]', PASS);
+  await p.fill('#brugernavn', USER);
+  await p.fill('input[type="password"]', PASS);
   await p.click('button[type="submit"]');
-  await waitReady(p, 800);
+  await waitReady(p, 1200);
 
   // 2. Tilbudsliste / dashboard
   await p.screenshot({ path: `${OUT}/02-tilbudsliste.png` });
@@ -81,9 +83,9 @@ async function waitReady(page, ms = 500) {
   const m = await mCtx.newPage();
 
   await m.goto(`${BASE}/login`);
-  await waitReady(m, 400);
-  await m.fill('input[name="brugernavn"], input[type="text"]', USER);
-  await m.fill('input[name="password"], input[type="password"]', PASS);
+  await m.waitForSelector('#brugernavn', { timeout: 15000 });
+  await m.fill('#brugernavn', USER);
+  await m.fill('input[type="password"]', PASS);
   await m.click('button[type="submit"]');
   await waitReady(m, 800);
   await m.screenshot({ path: `${OUT}/07-mobil-dashboard.png` });
