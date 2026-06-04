@@ -67,19 +67,26 @@ async function waitReady(page, ms = 500) {
         await prevBtn.click();
         await waitReady(p, 1000);
         await p.screenshot({ path: `${OUT}/05-preview.png`, fullPage: true });
-        // Gå tilbage til editor inden admin
-        await p.goBack();
-        await waitReady(p, 600);
       }
     }
   }
 
   // 6-9. Admin panel – alle 4 tabs
+  // Sørg for vi er logget ind (session kan være tabt efter navigation)
+  const meRes = await p.evaluate(async () => {
+    const r = await fetch('/api/auth/me', { credentials: 'include' });
+    return r.status;
+  });
+  if (meRes !== 200) {
+    await p.goto(`${BASE}/login`);
+    await p.waitForSelector('#brugernavn', { timeout: 10000 });
+    await p.fill('#brugernavn', USER);
+    await p.fill('input[type="password"]', PASS);
+    await p.click('button[type="submit"]');
+    await waitReady(p, 1000);
+  }
   await p.goto(`${BASE}/admin`);
   await waitReady(p, 1500);
-  // Debug: hvad er den aktuelle URL og titel?
-  console.log(`Admin URL: ${p.url()}`);
-  console.log(`Admin title: ${await p.title()}`);
   await p.screenshot({ path: `${OUT}/06-admin-produkter.png` });
 
   // Admin-tabs: vent til tabs er renderet, debug tæller
