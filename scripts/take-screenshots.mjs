@@ -76,7 +76,10 @@ async function waitReady(page, ms = 500) {
 
   // 6-9. Admin panel – alle 4 tabs
   await p.goto(`${BASE}/admin`);
-  await waitReady(p, 800);
+  await waitReady(p, 1500);
+  // Debug: hvad er den aktuelle URL og titel?
+  console.log(`Admin URL: ${p.url()}`);
+  console.log(`Admin title: ${await p.title()}`);
   await p.screenshot({ path: `${OUT}/06-admin-produkter.png` });
 
   // Admin-tabs: vent til tabs er renderet, debug tæller
