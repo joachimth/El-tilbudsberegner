@@ -79,10 +79,17 @@ async function waitReady(page, ms = 500) {
   await waitReady(p, 800);
   await p.screenshot({ path: `${OUT}/06-admin-produkter.png` });
 
-  // Admin-tabs via index (Radix UI role=tab, Lucide-ikoner kan forstyrre tekst-match)
-  // Tab-rækkefølge: 0=Produkter, 1=Indstillinger, 2=Skabeloner, 3=Brugere
+  // Admin-tabs: vent til tabs er renderet, debug tæller
+  await p.waitForSelector('[role="tab"]', { timeout: 10000 }).catch(() => {});
   const allTabs = p.locator('[role="tab"]');
   const tabCount = await allTabs.count();
+  console.log(`Admin tabCount: ${tabCount}`);
+
+  // Debug: log alle tab-tekster
+  for (let i = 0; i < tabCount; i++) {
+    const txt = await allTabs.nth(i).innerText().catch(() => '?');
+    console.log(`  tab[${i}]: "${txt}"`);
+  }
 
   if (tabCount >= 2) {
     await allTabs.nth(1).click();
