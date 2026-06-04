@@ -61,20 +61,47 @@ async function waitReady(page, ms = 500) {
       await p.screenshot({ path: `${OUT}/04-editor.png`, fullPage: false });
       await p.screenshot({ path: `${OUT}/04-editor-full.png`, fullPage: true });
 
-      // 5. HTML-preview knap
-      const prevBtn = p.locator('button:has-text("Forhåndsvisning"), button:has-text("Preview"), a:has-text("Forhåndsvisning")').first();
+      // 5. HTML-preview - brug data-testid der altid er til stede
+      const prevBtn = p.locator('[data-testid="button-preview"]').first();
       if (await prevBtn.count()) {
         await prevBtn.click();
-        await waitReady(p, 800);
+        await waitReady(p, 1000);
         await p.screenshot({ path: `${OUT}/05-preview.png`, fullPage: true });
+        // Gå tilbage til editor inden admin
+        await p.goBack();
+        await waitReady(p, 600);
       }
     }
   }
 
-  // 6. Admin panel
+  // 6-9. Admin panel – alle 4 tabs
   await p.goto(`${BASE}/admin`);
-  await waitReady(p, 600);
-  await p.screenshot({ path: `${OUT}/06-admin.png` });
+  await waitReady(p, 800);
+  await p.screenshot({ path: `${OUT}/06-admin-produkter.png` });
+
+  // Indstillinger-tab
+  const indstillingerTab = p.locator('[value="indstillinger"]').first();
+  if (await indstillingerTab.count()) {
+    await indstillingerTab.click();
+    await waitReady(p, 600);
+    await p.screenshot({ path: `${OUT}/07-admin-indstillinger.png`, fullPage: true });
+  }
+
+  // Skabeloner-tab
+  const skabelonerTab = p.locator('[value="skabeloner"]').first();
+  if (await skabelonerTab.count()) {
+    await skabelonerTab.click();
+    await waitReady(p, 600);
+    await p.screenshot({ path: `${OUT}/08-admin-skabeloner.png` });
+  }
+
+  // Brugere-tab
+  const brugereTab = p.locator('[value="brugere"]').first();
+  if (await brugereTab.count()) {
+    await brugereTab.click();
+    await waitReady(p, 600);
+    await p.screenshot({ path: `${OUT}/09-admin-brugere.png` });
+  }
 
   await ctx.close();
 
@@ -88,7 +115,7 @@ async function waitReady(page, ms = 500) {
   await m.fill('input[type="password"]', PASS);
   await m.click('button[type="submit"]');
   await waitReady(m, 800);
-  await m.screenshot({ path: `${OUT}/07-mobil-dashboard.png` });
+  await m.screenshot({ path: `${OUT}/10-mobil-dashboard.png` });
 
   await mCtx.close();
   await browser.close();

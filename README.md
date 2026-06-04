@@ -24,10 +24,17 @@ Dansk tilbudsberegner til el-installatører. Vælg produkter fra et katalog, gru
 ![Preview](docs/screenshots/05-preview.png)
 
 ### Admin-panel
-![Admin](docs/screenshots/06-admin.png)
+
+![Admin - Produkter](docs/screenshots/06-admin-produkter.png)
+
+![Admin - Indstillinger](docs/screenshots/07-admin-indstillinger.png)
+
+![Admin - Skabeloner](docs/screenshots/08-admin-skabeloner.png)
+
+![Admin - Brugere](docs/screenshots/09-admin-brugere.png)
 
 ### Mobil
-![Mobil](docs/screenshots/07-mobil-dashboard.png)
+![Mobil](docs/screenshots/10-mobil-dashboard.png)
 
 ---
 
