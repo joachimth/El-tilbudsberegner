@@ -79,27 +79,24 @@ async function waitReady(page, ms = 500) {
   await waitReady(p, 800);
   await p.screenshot({ path: `${OUT}/06-admin-produkter.png` });
 
-  // Indstillinger-tab - Radix UI bruger role=tab, selektor via tekst
-  const indstillingerTab = p.getByRole('tab', { name: /indstillinger/i });
-  if (await indstillingerTab.count()) {
-    await indstillingerTab.click();
-    await waitReady(p, 600);
+  // Admin-tabs via index (Radix UI role=tab, Lucide-ikoner kan forstyrre tekst-match)
+  // Tab-rækkefølge: 0=Produkter, 1=Indstillinger, 2=Skabeloner, 3=Brugere
+  const allTabs = p.locator('[role="tab"]');
+  const tabCount = await allTabs.count();
+
+  if (tabCount >= 2) {
+    await allTabs.nth(1).click();
+    await waitReady(p, 700);
     await p.screenshot({ path: `${OUT}/07-admin-indstillinger.png`, fullPage: true });
   }
-
-  // Skabeloner-tab
-  const skabelonerTab = p.getByRole('tab', { name: /skabeloner/i });
-  if (await skabelonerTab.count()) {
-    await skabelonerTab.click();
-    await waitReady(p, 600);
+  if (tabCount >= 3) {
+    await allTabs.nth(2).click();
+    await waitReady(p, 700);
     await p.screenshot({ path: `${OUT}/08-admin-skabeloner.png` });
   }
-
-  // Brugere-tab
-  const brugereTab = p.getByRole('tab', { name: /brugere/i });
-  if (await brugereTab.count()) {
-    await brugereTab.click();
-    await waitReady(p, 600);
+  if (tabCount >= 4) {
+    await allTabs.nth(3).click();
+    await waitReady(p, 700);
     await p.screenshot({ path: `${OUT}/09-admin-brugere.png` });
   }
 
