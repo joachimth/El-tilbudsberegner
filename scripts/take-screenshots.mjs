@@ -73,22 +73,26 @@ async function waitReady(page, ms = 500) {
 
   // 6-9. Admin panel – frisk context for at undgå session-state problemer
   await ctx.close();
+
+  // ── Admin flow (frisk context + login) ────────────────────────────────
   const adminCtx = await browser.newContext({ viewport: DESKTOP });
   const a = await adminCtx.newPage();
+  // Login i ny context
   await a.goto(`${BASE}/login`);
   await a.waitForSelector('#brugernavn', { timeout: 10000 });
   await a.fill('#brugernavn', USER);
   await a.fill('input[type="password"]', PASS);
   await a.click('button[type="submit"]');
-  await waitReady(a, 1200);
+  // Vent på at /login redirecter til dashboard
+  await a.waitForURL(`${BASE}/`, { timeout: 10000 });
+  // Naviger til admin
   await a.goto(`${BASE}/admin`);
-  // Vent til admin-tabs er klar
-  await a.waitForSelector('[role="tab"]', { timeout: 15000 });
-  await waitReady(a, 600);
+  // Admin er beskyttet - vent på at URL forbliver /admin (ikke redirect til /login)
+  await a.waitForURL(`${BASE}/admin`, { timeout: 10000 });
+  await waitReady(a, 1200);
   await a.screenshot({ path: `${OUT}/06-admin-produkter.png` });
-  await p.screenshot({ path: `${OUT}/06-admin-produkter.png` });
 
-  // Admin-tabs via index
+  // Admin-tabs via index: 0=Produkter, 1=Indstillinger, 2=Skabeloner, 3=Brugere
   const allTabs = a.locator('[role="tab"]');
   const tabCount = await allTabs.count();
 
