@@ -624,13 +624,47 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ── Skabelon-defaults: tilgængeligt for alle auth'd brugere ──────────────
 
+  // Hardkodede fallback-lokationer for nyinstallationer eller tomme konfigurationer
+  const FALLBACK_LOKATIONER: Record<string, Array<{ navn: string; linjer: Array<{ productId: string; antal: number }> }>> = {
+    standard: [
+      { navn: "Stue", linjer: [{ productId: "lyspunkt_loft", antal: 4 }, { productId: "stikkontakt_2p", antal: 6 }] },
+      { navn: "Soveværelse", linjer: [{ productId: "lyspunkt_loft", antal: 2 }, { productId: "stikkontakt_2p", antal: 4 }] },
+    ],
+    ev_erhverv: [
+      { navn: "Installation", linjer: [{ productId: "kabel_3g2.5", antal: 10 }, { productId: "gruppetavle_udskift", antal: 1 }] },
+    ],
+    ev_erhverv_v2: [
+      { navn: "EV-ladepunkt", linjer: [{ productId: "kabel_3g2.5", antal: 15 }, { productId: "service_time", antal: 2 }] },
+    ],
+    energi_privat: [
+      { navn: "Ny lokation", linjer: [] },
+    ],
+    modul_overslag: [
+      { navn: "Modul 1", linjer: [] },
+    ],
+  };
+
+  const FALLBACK_BLOKKE = [
+    { id: "hero_default", type: "hero" },
+    { id: "fordele_default", type: "fordele" },
+    { id: "lokationer_default", type: "lokationer" },
+    { id: "prissummary_default", type: "prissummary" },
+    { id: "forbehold_default", type: "forbehold" },
+    { id: "cta_default", type: "cta" },
+    { id: "kontaktperson_default", type: "kontaktperson" },
+  ];
+
   app.get("/api/skabelon/:skabelon/defaults", requireAuth, async (req, res) => {
     try {
-      const konfig = await storage.getSkabelonKonfig(String(req.params.skabelon));
-      res.json({
-        defaultLokationer: (konfig.defaultLokationer as any[]) ?? [],
-        blokke: (konfig.blokke as any[] | undefined) ?? undefined,
-      });
+      const skabelon = String(req.params.skabelon);
+      const konfig = await storage.getSkabelonKonfig(skabelon);
+      const defaultLokationer = (konfig.defaultLokationer as any[])?.length
+        ? (konfig.defaultLokationer as any[])
+        : (FALLBACK_LOKATIONER[skabelon] ?? [{ navn: "Ny lokation", linjer: [] }]);
+      const blokke = (konfig.blokke as any[])?.length
+        ? (konfig.blokke as any[])
+        : (skabelon === "ev_erhverv_v2" ? FALLBACK_BLOKKE : undefined);
+      res.json({ defaultLokationer, blokke });
     } catch {
       res.status(500).json({ error: "Kunne ikke hente skabelon-defaults" });
     }

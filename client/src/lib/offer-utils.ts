@@ -67,6 +67,8 @@ export function createEmptyOffer(skabelon: Skabelon = "standard"): Offer {
   const today = new Date().toISOString().split('T')[0];
   // tilbudNr hentes fra serveren (GET /api/tilbud/naeste-nr) og sættes efterfølgende.
   // Bruges kun som temporær placeholder til næste server-fetch er færdig.
+  // Én tom lokation sikrer at editoren aldrig starter helt blank,
+  // og at defaultLokationer fra API kan overskrive disse ved handleTemplateSelected.
   return {
     skabelon,
     meta: {
@@ -85,7 +87,7 @@ export function createEmptyOffer(skabelon: Skabelon = "standard"): Offer {
       visInkl: false
     },
     bemærkninger: "",
-    lokationer: []
+    lokationer: [createEmptyLokation("Ny lokation")]
   };
 }
 

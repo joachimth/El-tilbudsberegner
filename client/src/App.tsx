@@ -19,6 +19,9 @@ import { ErrorBoundary } from "@/components/error-boundary";
 
 function Router() {
   const [currentOffer, setCurrentOffer] = useState<Offer | null>(null);
+  // offerKey tvinges op ved hvert nyt tilbud (template-valg eller load fra liste).
+  // key-prop på EditorPage sikrer komplet re-mount og nulstiller al lokal state.
+  const [offerKey, setOfferKey] = useState(0);
   const [, navigate] = useLocation();
 
   const { data: currentUser, isLoading } = useQuery<CurrentUser | null>({
@@ -35,6 +38,7 @@ function Router() {
 
   const handleLoadOffer = useCallback((offer: Offer) => {
     setCurrentOffer(offer);
+    setOfferKey(k => k + 1);
     navigate("/editor");
   }, [navigate]);
 
@@ -60,14 +64,17 @@ function Router() {
         }
         // V2-blokke: kopier fra skabelon-konfig ind i offer.v2 så preview
         // bruger de konfigurerede blokke (i stedet for kun templateKonfig-fallback)
-        if (skabelon === "ev_erhverv_v2" && Array.isArray(data.blokke) && data.blokke.length > 0) {
+        if (skabelon === "ev_erhverv_v2") {
+          const blokke = Array.isArray(data.blokke) && data.blokke.length > 0
+            ? data.blokke.map((b: { type: string; data?: Record<string, unknown>; skjult?: boolean }) => ({
+                ...b,
+                id: `${b.type}_${Math.random().toString(36).slice(2, 10)}`,
+              }))
+            : [];
           offer.v2 = {
             globalPricingMode: "line_items",
             sektioner: [],
-            blokke: data.blokke.map((b: { type: string; data?: Record<string, unknown>; skjult?: boolean }) => ({
-              ...b,
-              id: `${b.type}_${Math.random().toString(36).slice(2, 10)}`,
-            })),
+            blokke,
           };
         }
       }
@@ -77,6 +84,7 @@ function Router() {
       }
     } catch {}
     setCurrentOffer(offer);
+    setOfferKey(k => k + 1);
     navigate("/editor");
   }, [navigate]);
 
@@ -110,7 +118,7 @@ function Router() {
       <Route path="/editor">
         {!currentUser
           ? <Redirect to="/login" />
-          : <EditorPage initialOffer={currentOffer} onOfferChange={handleOfferChange} currentUser={currentUser} />}
+          : <EditorPage key={offerKey} initialOffer={currentOffer} onOfferChange={handleOfferChange} currentUser={currentUser} />}
       </Route>
 
       {/* Forhåndsvisning */}

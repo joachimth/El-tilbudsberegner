@@ -122,6 +122,26 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
     return initBlokke(templateKonfig?.blokke);
   }, [offer.v2?.blokke, templateKonfig?.blokke]);
 
+  // Sørg for at offer.v2.blokke altid er udfyldt så preview/html-export
+  // ikke modtager offer.v2 = undefined og falder back til tomme defaults.
+  // Kører når templateKonfig er loadet og offer.v2.blokke endnu ikke er sat.
+  useEffect(() => {
+    if (!isV2) return;
+    if (offer.v2?.blokke && offer.v2.blokke.length > 0) return;
+    const blokke = initBlokke(templateKonfig?.blokke);
+    setOffer(o => ({
+      ...o,
+      v2: {
+        globalPricingMode: "line_items",
+        sektioner: [],
+        ...o.v2,
+        blokke,
+      },
+    }));
+  // Kør kun når templateKonfig-blokke ændres - ikke ved hvert offer-opdatering
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isV2, templateKonfig?.blokke]);
+
   const offerWithTotals = useMemo(() => {
     if (!products.length) return null;
     return calculateOfferTotals(offer, products, config?.momsprocent || 25);
