@@ -109,6 +109,55 @@ export async function initDatabase(): Promise<void> {
       }
     }
 
+    // Seed skabelon-konfigurationer med standard lokationer (første gang)
+    const { rows: skabRows } = await client.query(
+      "SELECT 1 FROM indstillinger WHERE nøgle = 'skabelon_standard' LIMIT 1"
+    );
+    if (skabRows.length === 0) {
+      const standardKonfig = JSON.stringify({
+        skjult: false,
+        defaultLokationer: [
+          { navn: "Stue", linjer: [{ productId: "lyspunkt_loft", antal: 4 }, { productId: "stikkontakt_2p", antal: 6 }] },
+          { navn: "Soveværelse", linjer: [{ productId: "lyspunkt_loft", antal: 2 }, { productId: "stikkontakt_2p", antal: 4 }] },
+        ],
+      });
+      const evKonfig = JSON.stringify({
+        skjult: false,
+        defaultLokationer: [
+          { navn: "Installation", linjer: [{ productId: "kabel_3g2.5", antal: 10 }, { productId: "gruppetavle_udskift", antal: 1 }] },
+        ],
+      });
+      const v2Konfig = JSON.stringify({
+        skjult: false,
+        accentFarve: "#1f4d6b",
+        defaultLokationer: [
+          { navn: "EV-ladepunkt", linjer: [{ productId: "kabel_3g2.5", antal: 15 }, { productId: "service_time", antal: 2 }] },
+        ],
+        blokke: [
+          { id: "hero_default", type: "hero" },
+          { id: "fordele_default", type: "fordele" },
+          { id: "lokationer_default", type: "lokationer" },
+          { id: "prissummary_default", type: "prissummary" },
+          { id: "forbehold_default", type: "forbehold" },
+          { id: "cta_default", type: "cta" },
+          { id: "kontaktperson_default", type: "kontaktperson" },
+        ],
+      });
+      for (const [nøgle, værdi] of [
+        ["skabelon_standard", standardKonfig],
+        ["skabelon_ev_erhverv", evKonfig],
+        ["skabelon_ev_erhverv_v2", v2Konfig],
+        ["skabelon_energi_privat", JSON.stringify({ skjult: false, defaultLokationer: [{ navn: "Ny lokation", linjer: [] }] })],
+        ["skabelon_modul_overslag", JSON.stringify({ skjult: false, defaultLokationer: [{ navn: "Modul 1", linjer: [] }] })],
+      ]) {
+        await client.query(
+          "INSERT INTO indstillinger (nøgle, værdi) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+          [nøgle, værdi]
+        );
+      }
+      console.log("Seeded standard skabelon-konfigurationer med default lokationer");
+    }
+
     // Seed indstillinger fra config.json
     const { rows: settingRows } = await client.query("SELECT COUNT(*) AS count FROM indstillinger");
     if (parseInt(settingRows[0].count) === 0) {

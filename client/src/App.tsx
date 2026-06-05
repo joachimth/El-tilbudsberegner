@@ -51,8 +51,24 @@ function Router() {
       ]);
       if (defaultsRes.ok) {
         const data = await defaultsRes.json();
+        // Standard lokationer fra skabelon-konfiguration
         if (Array.isArray(data.defaultLokationer) && data.defaultLokationer.length > 0) {
           offer.lokationer = migrerLokationIds(data.defaultLokationer);
+        } else {
+          // Altid mindst én tom lokation så editoren ikke starter helt blank
+          offer.lokationer = [{ id: `lok_${Math.random().toString(36).slice(2, 10)}`, navn: "Ny lokation", linjer: [] }];
+        }
+        // V2-blokke: kopier fra skabelon-konfig ind i offer.v2 så preview
+        // bruger de konfigurerede blokke (i stedet for kun templateKonfig-fallback)
+        if (skabelon === "ev_erhverv_v2" && Array.isArray(data.blokke) && data.blokke.length > 0) {
+          offer.v2 = {
+            globalPricingMode: "line_items",
+            sektioner: [],
+            blokke: data.blokke.map((b: { type: string; data?: Record<string, unknown>; skjult?: boolean }) => ({
+              ...b,
+              id: `${b.type}_${Math.random().toString(36).slice(2, 10)}`,
+            })),
+          };
         }
       }
       if (nrRes.ok) {
