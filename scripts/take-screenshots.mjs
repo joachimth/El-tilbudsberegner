@@ -65,7 +65,10 @@ async function waitReady(page, ms = 500) {
       const prevBtn = p.locator('[data-testid="button-preview"]').first();
       if (await prevBtn.count()) {
         await prevBtn.click();
-        await waitReady(p, 1000);
+        // Vent til preview-indhold er loadet (ikke skeleton)
+        // data-testid="button-preview-back" renderes kun når content er klar
+        await p.waitForSelector('[data-testid="button-preview-back"]', { timeout: 15000 }).catch(() => {});
+        await waitReady(p, 800);
         await p.screenshot({ path: `${OUT}/05-preview.png`, fullPage: true });
       }
     }
@@ -89,12 +92,15 @@ async function waitReady(page, ms = 500) {
   await a.goto(`${BASE}/admin`);
   // Admin er beskyttet - vent på at URL forbliver /admin (ikke redirect til /login)
   await a.waitForURL(`${BASE}/admin`, { timeout: 10000 });
-  await waitReady(a, 1200);
+  // Vent eksplicit til Radix-tabs er i DOM inden vi forsøger at tælle/klikke
+  await a.waitForSelector('[role="tab"]', { timeout: 10000 });
+  await waitReady(a, 800);
   await a.screenshot({ path: `${OUT}/06-admin-produkter.png` });
 
   // Admin-tabs via index: 0=Produkter, 1=Indstillinger, 2=Skabeloner, 3=Brugere
   const allTabs = a.locator('[role="tab"]');
   const tabCount = await allTabs.count();
+  console.log(`Admin tab count: ${tabCount}`);
 
   if (tabCount >= 2) {
     await allTabs.nth(1).click();
