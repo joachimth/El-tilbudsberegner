@@ -106,20 +106,40 @@ async function waitReady(page, ms = 500) {
   }
   console.log(`[Admin] Login successful, at ${a.url()}`);
 
-  // Naviger til admin - ingen ekstra vent nødvendig pga. isLoading-guard
-  await a.goto(`${BASE}/admin`);
-  console.log(`[Admin] Navigated to /admin, URL is ${a.url()}`);
+  // Naviger til admin
+  // VIGTIGT: Efter login blev vi redirected til / og der forsvandt currentUser fra React Query cache.
+  // Vi skal hoppe direkte til /admin uden at gå gennem /. Men navigationen med goto('/admin')
+  // kan udløse en stille redirect hvis auth-queryen ikke er ny.
+  // Løsning: vent eksplicit på at /api/auth/me bliver kaldt og svarer med user data.
   
-  // Tjek hvad der rent faktisk er i DOM inden vi venter på tabs
-  const bodyText = await a.evaluate(() => document.body.innerText.slice(0, 300));
-  console.log(`[Admin] Page body text: ${bodyText}`);
+  let authFetched = false;
+  const authHandler = resp => {
+    if (resp.url().includes('/api/auth/me') && resp.status() === 200) {
+      authFetched = true;
+    }
+  };
+  a.on('response', authHandler);
+  
+  await a.goto(`${BASE}/admin`);
+  console.log(`[Admin] Navigated to /admin`);
+  
+  // Vent til auth-queryen kører (maximal 5 sekunder)
+  let waited = 0;
+  while (!authFetched && waited < 5000) {
+    await a.waitForTimeout(100);
+    waited += 100;
+  }
+  console.log(`[Admin] Auth fetch completed (waited ${waited}ms), URL is ${a.url()}`);
+  
+  // Tjek hvad der rent faktisk er på siden
+  const bodyText = await a.evaluate(() => document.body.innerText.slice(0, 200));
+  console.log(`[Admin] Page body shows: ${bodyText}`);
   
   // Vent til tabs er i DOM
   try {
     await a.waitForSelector('[role="tab"]', { timeout: 15000 });
   } catch (e) {
-    const pageHtml = await a.evaluate(() => document.documentElement.outerHTML.slice(0, 1000));
-    console.log(`[Admin] ERROR: Tabs not found. HTML start: ${pageHtml}`);
+    console.log(`[Admin] ERROR: Tabs not found after ${waited}ms auth wait`);
     throw e;
   }
   await waitReady(a, 800);
