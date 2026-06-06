@@ -108,8 +108,20 @@ async function waitReady(page, ms = 500) {
 
   // Naviger til admin - ingen ekstra vent nødvendig pga. isLoading-guard
   await a.goto(`${BASE}/admin`);
+  console.log(`[Admin] Navigated to /admin, URL is ${a.url()}`);
+  
+  // Tjek hvad der rent faktisk er i DOM inden vi venter på tabs
+  const bodyText = await a.evaluate(() => document.body.innerText.slice(0, 300));
+  console.log(`[Admin] Page body text: ${bodyText}`);
+  
   // Vent til tabs er i DOM
-  await a.waitForSelector('[role="tab"]', { timeout: 15000 });
+  try {
+    await a.waitForSelector('[role="tab"]', { timeout: 15000 });
+  } catch (e) {
+    const pageHtml = await a.evaluate(() => document.documentElement.outerHTML.slice(0, 1000));
+    console.log(`[Admin] ERROR: Tabs not found. HTML start: ${pageHtml}`);
+    throw e;
+  }
   await waitReady(a, 800);
 
   // 6. Admin - Produkter (default tab)
