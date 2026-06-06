@@ -88,12 +88,26 @@ async function waitReady(page, ms = 500) {
   await a.click('button[type="submit"]');
   // Vent på at /login redirecter til dashboard
   await a.waitForURL(`${BASE}/`, { timeout: 10000 });
+  // Kritisk: vent på networkidle INDEN vi navigerer til admin.
+  // Wouter's <Redirect to="/login"> på admin-ruten udløses i millisekunder
+  // hvis /api/auth/me ikke er loadet endnu. networkidle sikrer at
+  // auth-queryen er fuldført og currentUser er sat i React state.
+  await a.waitForLoadState("networkidle").catch(() => {});
+  await a.waitForTimeout(800);
   // Naviger til admin
   await a.goto(`${BASE}/admin`);
-  // Admin er beskyttet - vent på at URL forbliver /admin (ikke redirect til /login)
-  await a.waitForURL(`${BASE}/admin`, { timeout: 10000 });
+  // Vent på at admin-siden renderer (auth-state allerede loadet ovenfor)
+  await a.waitForLoadState("networkidle").catch(() => {});
+  await a.waitForTimeout(500);
+  // Tjek at vi faktisk er på /admin og ikke er redirected til /login
+  if (!a.url().includes("/admin")) {
+    console.log(`WARN: Redirected fra /admin til ${a.url()} - forsøger igen`);
+    await a.goto(`${BASE}/admin`);
+    await a.waitForLoadState("networkidle").catch(() => {});
+    await a.waitForTimeout(1000);
+  }
   // Vent eksplicit til Radix-tabs er i DOM inden vi forsøger at tælle/klikke
-  await a.waitForSelector('[role="tab"]', { timeout: 10000 });
+  await a.waitForSelector('[role="tab"]', { timeout: 15000 });
   await waitReady(a, 800);
   await a.screenshot({ path: `${OUT}/06-admin-produkter.png` });
 
