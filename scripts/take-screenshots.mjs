@@ -65,7 +65,6 @@ async function waitReady(page, ms = 500) {
       const prevBtn = p.locator('[data-testid="button-preview"]').first();
       if (await prevBtn.count()) {
         await prevBtn.click();
-        // Vent til preview-indhold er loadet - back-knap renderes kun når content er klar
         await p.waitForSelector('[data-testid="button-preview-back"]', { timeout: 15000 }).catch(() => {});
         await waitReady(p, 800);
         await p.screenshot({ path: `${OUT}/05-preview.png`, fullPage: true });
@@ -76,78 +75,26 @@ async function waitReady(page, ms = 500) {
   await ctx.close();
 
   // ── Admin flow (frisk context) ─────────────────────────────────────────
-  // App.tsx har isLoading-guard på alle beskyttede ruter:
-  //   {isLoading ? null : !currentUser ? <Redirect to="/login" /> : ...}
-  // Det betyder at /admin aldrig redirecter til /login mens auth fetches.
-  // Vi kan navigere direkte til /admin efter login uden race condition.
+  // Session-cookie er nu HTTP-kompatibel i CI (secure:false når CI=true).
+  // isLoading-guard på alle ruter forhindrer premature redirect.
   const adminCtx = await browser.newContext({ viewport: DESKTOP });
   const a = await adminCtx.newPage();
-  
-  // Intercept responses to diagnose login
-  let loginResponse = null;
-  a.on('response', resp => {
-    if (resp.url().includes('/api/auth/login')) {
-      loginResponse = { url: resp.url(), status: resp.status() };
-    }
-  });
 
   await a.goto(`${BASE}/login`);
   await a.waitForSelector('#brugernavn', { timeout: 10000 });
   await a.fill('#brugernavn', USER);
   await a.fill('input[type="password"]', PASS);
-  console.log("[Admin] Clicking login button...");
   await a.click('button[type="submit"]');
-  
-  try {
-    await a.waitForURL(`${BASE}/`, { timeout: 15000 });
-  } catch (e) {
-    console.log(`[Admin] ERROR: Login redirect timeout. Current URL: ${a.url()}, Login response: ${JSON.stringify(loginResponse)}`);
-    throw e;
-  }
-  console.log(`[Admin] Login successful, at ${a.url()}`);
+  await a.waitForURL(`${BASE}/`, { timeout: 15000 });
 
-  // Naviger til admin
-  // VIGTIGT: Efter login blev vi redirected til / og der forsvandt currentUser fra React Query cache.
-  // Vi skal hoppe direkte til /admin uden at gå gennem /. Men navigationen med goto('/admin')
-  // kan udløse en stille redirect hvis auth-queryen ikke er ny.
-  // Løsning: vent eksplicit på at /api/auth/me bliver kaldt og svarer med user data.
-  
-  let authFetched = false;
-  const authHandler = resp => {
-    if (resp.url().includes('/api/auth/me') && resp.status() === 200) {
-      authFetched = true;
-    }
-  };
-  a.on('response', authHandler);
-  
+  // Naviger til admin og vent på tabs
   await a.goto(`${BASE}/admin`);
-  console.log(`[Admin] Navigated to /admin`);
-  
-  // Vent til auth-queryen kører (maximal 5 sekunder)
-  let waited = 0;
-  while (!authFetched && waited < 5000) {
-    await a.waitForTimeout(100);
-    waited += 100;
-  }
-  console.log(`[Admin] Auth fetch completed (waited ${waited}ms), URL is ${a.url()}`);
-  
-  // Tjek hvad der rent faktisk er på siden
-  const bodyText = await a.evaluate(() => document.body.innerText.slice(0, 200));
-  console.log(`[Admin] Page body shows: ${bodyText}`);
-  
-  // Vent til tabs er i DOM
-  try {
-    await a.waitForSelector('[role="tab"]', { timeout: 15000 });
-  } catch (e) {
-    console.log(`[Admin] ERROR: Tabs not found after ${waited}ms auth wait`);
-    throw e;
-  }
+  await a.waitForSelector('[role="tab"]', { timeout: 15000 });
   await waitReady(a, 800);
 
   // 6. Admin - Produkter (default tab)
   await a.screenshot({ path: `${OUT}/06-admin-produkter.png` });
 
-  // Admin-tabs via index: 0=Produkter, 1=Indstillinger, 2=Skabeloner, 3=Brugere
   const allTabs = a.locator('[role="tab"]');
   const tabCount = await allTabs.count();
   console.log(`Admin tab count: ${tabCount}`);

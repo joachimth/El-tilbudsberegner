@@ -42,7 +42,10 @@ app.use(
       tableName: "sessioner",
     }),
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      // secure:true kræver HTTPS. I CI køres plain HTTP selv med NODE_ENV=production.
+      // GitHub Actions sætter CI=true automatisk - brug det til at slå secure fra i CI.
+      // I Replit-produktion er CI ikke sat, og appen kører bag HTTPS-proxy → secure:true korrekt.
+      secure: process.env.NODE_ENV === "production" && !process.env.CI,
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
