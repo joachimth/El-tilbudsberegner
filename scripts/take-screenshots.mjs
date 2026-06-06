@@ -82,13 +82,29 @@ async function waitReady(page, ms = 500) {
   // Vi kan navigere direkte til /admin efter login uden race condition.
   const adminCtx = await browser.newContext({ viewport: DESKTOP });
   const a = await adminCtx.newPage();
+  
+  // Intercept responses to diagnose login
+  let loginResponse = null;
+  a.on('response', resp => {
+    if (resp.url().includes('/api/auth/login')) {
+      loginResponse = { url: resp.url(), status: resp.status() };
+    }
+  });
 
   await a.goto(`${BASE}/login`);
   await a.waitForSelector('#brugernavn', { timeout: 10000 });
   await a.fill('#brugernavn', USER);
   await a.fill('input[type="password"]', PASS);
+  console.log("[Admin] Clicking login button...");
   await a.click('button[type="submit"]');
-  await a.waitForURL(`${BASE}/`, { timeout: 15000 });
+  
+  try {
+    await a.waitForURL(`${BASE}/`, { timeout: 15000 });
+  } catch (e) {
+    console.log(`[Admin] ERROR: Login redirect timeout. Current URL: ${a.url()}, Login response: ${JSON.stringify(loginResponse)}`);
+    throw e;
+  }
+  console.log(`[Admin] Login successful, at ${a.url()}`);
 
   // Naviger til admin - ingen ekstra vent nødvendig pga. isLoading-guard
   await a.goto(`${BASE}/admin`);
