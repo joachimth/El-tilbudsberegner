@@ -39,7 +39,16 @@ async function waitReady(page, ms = 500) {
   // Log ind
   await p.fill('#brugernavn', USER);
   await p.fill('input[type="password"]', PASS);
+  console.log("Desktop: Submitting login form...");
   await p.click('button[type="submit"]');
+  // Vent på at login POST respons dukker op (page navigates eller response er modtaget)
+  try {
+    await p.waitForURL(`${BASE}/`, { timeout: 15000 });
+  } catch (e) {
+    console.log(`ERROR: Desktop login redirect failed. Current URL: ${p.url()}`);
+    throw e;
+  }
+  console.log("Desktop: Login successful, at", p.url());
   await waitReady(p, 1200);
 
   // 2. Tilbudsliste / dashboard
@@ -85,9 +94,17 @@ async function waitReady(page, ms = 500) {
   await a.waitForSelector('#brugernavn', { timeout: 10000 });
   await a.fill('#brugernavn', USER);
   await a.fill('input[type="password"]', PASS);
+  console.log("Admin: Submitting login form...");
   await a.click('button[type="submit"]');
   // Vent på at /login redirecter til dashboard
-  await a.waitForURL(`${BASE}/`, { timeout: 10000 });
+  try {
+    await a.waitForURL(`${BASE}/`, { timeout: 15000 });
+  } catch (e) {
+    console.log(`ERROR: Admin login redirect failed. Current URL: ${a.url()}`);
+    console.log(`Response status might be: ${await a.evaluate(() => document.documentElement.innerText.slice(0, 500))}`);
+    throw e;
+  }
+  console.log("Admin: Login successful, at", a.url());
   // Kritisk: vent på networkidle INDEN vi navigerer til admin.
   // Wouter's <Redirect to="/login"> på admin-ruten udløses i millisekunder
   // hvis /api/auth/me ikke er loadet endnu. networkidle sikrer at
