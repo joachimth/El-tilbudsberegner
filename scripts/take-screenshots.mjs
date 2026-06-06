@@ -51,24 +51,26 @@ async function waitReady(page, ms = 500) {
     await waitReady(p, 600);
     await p.screenshot({ path: `${OUT}/03-skabelonvaelger.png` });
 
-    // Vælg standard-skabelon
+    // Vælg EV Erhverv V2 (flagship-skabelon med hero, fordele osv.)
+    const v2Btn = p.locator('[data-skabelon="ev_erhverv_v2"], button:has-text("EV Erhverv V2"), button:has-text("EV & Erhverv V2"), button:has-text("Premium")').first();
     const stdBtn = p.locator('[data-skabelon="standard"], button:has-text("Standard"), button:has-text("standard")').first();
-    if (await stdBtn.count()) {
-      await stdBtn.click();
-      await waitReady(p, 800);
 
-      // 4. Editor
-      await p.screenshot({ path: `${OUT}/04-editor.png`, fullPage: false });
-      await p.screenshot({ path: `${OUT}/04-editor-full.png`, fullPage: true });
+    // Foretrækker V2; falder tilbage til Standard hvis V2-knap ikke findes
+    const templateBtn = (await v2Btn.count()) ? v2Btn : stdBtn;
+    await templateBtn.click();
+    await waitReady(p, 1000);
 
-      // 5. HTML-preview
-      const prevBtn = p.locator('[data-testid="button-preview"]').first();
-      if (await prevBtn.count()) {
-        await prevBtn.click();
-        await p.waitForSelector('[data-testid="button-preview-back"]', { timeout: 15000 }).catch(() => {});
-        await waitReady(p, 800);
-        await p.screenshot({ path: `${OUT}/05-preview.png`, fullPage: true });
-      }
+    // 4. Editor
+    await p.screenshot({ path: `${OUT}/04-editor.png`, fullPage: false });
+    await p.screenshot({ path: `${OUT}/04-editor-full.png`, fullPage: true });
+
+    // 5. HTML-preview (viser hero + fordele + lokationer osv. for V2)
+    const prevBtn = p.locator('[data-testid="button-preview"]').first();
+    if (await prevBtn.count()) {
+      await prevBtn.click();
+      await p.waitForSelector('[data-testid="button-preview-back"]', { timeout: 15000 }).catch(() => {});
+      await waitReady(p, 1000);
+      await p.screenshot({ path: `${OUT}/05-preview.png`, fullPage: true });
     }
   }
 

@@ -61,6 +61,7 @@ export default function TemplateSelector({ onSelect }: TemplateSelectorProps) {
             return (
               <button
                 key={s.id}
+                data-skabelon={s.id}
                 onClick={() => onSelect(s.id)}
                 className={`group text-left border rounded-xl overflow-hidden bg-card hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${s.nyhed ? "ring-2 ring-[#1f4d6b]/30" : ""}`}
               >
