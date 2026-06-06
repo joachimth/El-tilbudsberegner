@@ -109,35 +109,35 @@ function Router() {
 
       {/* Forside */}
       <Route path="/">
-        {!currentUser
+        {isLoading ? null : !currentUser
           ? <Redirect to="/login" />
           : <Home currentUser={currentUser} onLoadOffer={handleLoadOffer} onNewOffer={handleNewOffer} />}
       </Route>
 
       {/* Editor */}
       <Route path="/editor">
-        {!currentUser
+        {isLoading ? null : !currentUser
           ? <Redirect to="/login" />
           : <EditorPage key={offerKey} initialOffer={currentOffer} onOfferChange={handleOfferChange} currentUser={currentUser} />}
       </Route>
 
       {/* Forhåndsvisning */}
       <Route path="/preview">
-        {!currentUser
+        {isLoading ? null : !currentUser
           ? <Redirect to="/login" />
           : <PreviewPage offer={currentOffer} currentUser={currentUser} />}
       </Route>
 
       {/* Template-vælger */}
       <Route path="/template-selector">
-        {!currentUser
+        {isLoading ? null : !currentUser
           ? <Redirect to="/login" />
           : <TemplateSelector onSelect={handleTemplateSelected} />}
       </Route>
 
       {/* Admin – kun admin-rolle */}
       <Route path="/admin">
-        {!currentUser
+        {isLoading ? null : !currentUser
           ? <Redirect to="/login" />
           : currentUser.rolle !== "admin"
             ? <Redirect to="/" />
