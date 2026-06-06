@@ -45,20 +45,31 @@ async function waitReady(page, ms = 500) {
   await p.screenshot({ path: `${OUT}/02-tilbudsliste.png` });
 
   // 3. Skabelon-vælger
-  const nyBtn = p.locator('button:has-text("Nyt tilbud"), a:has-text("Nyt tilbud")').first();
-  if (await nyBtn.count()) {
-    await nyBtn.click();
-    await waitReady(p, 600);
+  // Klik på "Nyt tilbud" kortet (Button[data-testid] er mere pålidelig end has-text)
+  const nyBtn = p.locator('[data-testid="button-new-offer"]').first();
+  const nyBtnFallback = p.locator('button:has-text("Opret nyt tilbud"), button:has-text("Nyt tilbud")').first();
+  const nyBtnEl = (await nyBtn.count()) ? nyBtn : nyBtnFallback;
+  if (await nyBtnEl.count()) {
+    await nyBtnEl.click();
+    // Vent eksplicit på at URL skifter til /template-selector
+    await p.waitForURL("**/template-selector", { timeout: 10000 }).catch(() => {});
+    // Vent til V2-knappen er synlig (API-kald /api/skabeloner er returneret)
+    await p.waitForSelector('[data-skabelon="ev_erhverv_v2"]', { timeout: 10000 }).catch(() => {});
+    await p.waitForTimeout(400);
     await p.screenshot({ path: `${OUT}/03-skabelonvaelger.png` });
 
     // Vælg EV Erhverv V2 (flagship-skabelon med hero, fordele osv.)
-    const v2Btn = p.locator('[data-skabelon="ev_erhverv_v2"], button:has-text("EV Erhverv V2"), button:has-text("EV & Erhverv V2"), button:has-text("Premium")').first();
-    const stdBtn = p.locator('[data-skabelon="standard"], button:has-text("Standard"), button:has-text("standard")').first();
+    const v2Btn = p.locator('[data-skabelon="ev_erhverv_v2"]').first();
+    const stdBtn = p.locator('[data-skabelon="standard"]').first();
+    const v2Count = await v2Btn.count();
+    console.log(`V2-knap fundet: ${v2Count > 0 ? "JA" : "NEJ – falder tilbage til Standard"}`);
 
-    // Foretrækker V2; falder tilbage til Standard hvis V2-knap ikke findes
-    const templateBtn = (await v2Btn.count()) ? v2Btn : stdBtn;
+    const templateBtn = v2Count > 0 ? v2Btn : stdBtn;
     await templateBtn.click();
-    await waitReady(p, 1000);
+    // Vent på editor er klar (offerKey remount + API-kald til defaults er færdige)
+    await p.waitForURL("**/editor", { timeout: 10000 }).catch(() => {});
+    await p.waitForSelector('[data-testid="button-preview"]', { timeout: 10000 }).catch(() => {});
+    await p.waitForTimeout(800);
 
     // 4. Editor
     await p.screenshot({ path: `${OUT}/04-editor.png`, fullPage: false });
@@ -69,7 +80,9 @@ async function waitReady(page, ms = 500) {
     if (await prevBtn.count()) {
       await prevBtn.click();
       await p.waitForSelector('[data-testid="button-preview-back"]', { timeout: 15000 }).catch(() => {});
-      await waitReady(p, 1000);
+      // Vent til iframe/preview er loadet (V2 bruger iframe med blob: URL)
+      await p.waitForLoadState("networkidle").catch(() => {});
+      await p.waitForTimeout(1500);
       await p.screenshot({ path: `${OUT}/05-preview.png`, fullPage: true });
     }
   }
