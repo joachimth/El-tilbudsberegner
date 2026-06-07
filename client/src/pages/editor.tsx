@@ -89,11 +89,11 @@ export default function EditorPage({ initialOffer, onOfferChange, currentUser }:
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (initialOffer) {
-      setOffer(initialOffer);
-    }
-  }, [initialOffer]);
+  // useEffect [initialOffer] er fjernet: EditorPage bruger key={offerKey} til
+  // at re-mounte ved nyt tilbud, så useState-initializer kører korrekt med det
+  // rigtige initialOffer. useEffect-versionen skabte en korrumperingsloop hvor
+  // EditorPage's første render (med null initialOffer → Standard skabelon) kunne
+  // overskrive det korrekte ev_erhverv_v2 offer via onOfferChange.
 
   useEffect(() => {
     onOfferChange(offer);

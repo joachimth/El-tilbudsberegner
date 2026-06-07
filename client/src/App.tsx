@@ -39,7 +39,10 @@ function Router() {
   const handleLoadOffer = useCallback((offer: Offer) => {
     setCurrentOffer(offer);
     setOfferKey(k => k + 1);
-    navigate("/editor");
+    // setTimeout(0): giver React én event-loop-tur til at committe
+    // state-opdateringerne inden Wouter navigerer. Uden dette kan
+    // EditorPage mounte med initialOffer=null (race condition).
+    setTimeout(() => navigate("/editor"), 0);
   }, [navigate]);
 
   const handleNewOffer = useCallback(() => {
@@ -85,7 +88,9 @@ function Router() {
     } catch {}
     setCurrentOffer(offer);
     setOfferKey(k => k + 1);
-    navigate("/editor");
+    // setTimeout(0): giver React én event-loop-tur til at committe
+    // state-opdateringerne inden Wouter navigerer.
+    setTimeout(() => navigate("/editor"), 0);
   }, [navigate]);
 
   const handleOfferChange = useCallback((offer: Offer) => {
