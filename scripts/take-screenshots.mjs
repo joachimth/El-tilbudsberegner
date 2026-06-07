@@ -80,9 +80,15 @@ async function waitReady(page, ms = 500) {
     if (await prevBtn.count()) {
       await prevBtn.click();
       await p.waitForSelector('[data-testid="button-preview-back"]', { timeout: 15000 }).catch(() => {});
-      // Vent til iframe/preview er loadet (V2 bruger iframe med blob: URL)
-      await p.waitForLoadState("networkidle").catch(() => {});
-      await p.waitForTimeout(1500);
+      // V2 bruger en iframe med blob: URL - den loades fra memory, ikke netværket.
+      // waitForLoadState("networkidle") hjælper ikke her.
+      // Vent i stedet til iframe-elementet er synligt og har fået src:
+      await p.waitForSelector('iframe[src^="blob:"]', { timeout: 10000 }).catch(async () => {
+        // Fallback: ikke V2 preview, bare vent generelt
+        await p.waitForTimeout(1000);
+      });
+      // Giv iframe tid til at rendere indholdet (onLoad + height-adjust)
+      await p.waitForTimeout(3000);
       await p.screenshot({ path: `${OUT}/05-preview.png`, fullPage: true });
     }
   }
